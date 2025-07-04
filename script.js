@@ -3,41 +3,76 @@ const baseUrl = 'https://api.themoviedb.org/3';
 const imageBaseUrl = 'https://image.tmdb.org/t/p/w500';
 const multiEmbedBaseUrl = 'https://multiembed.mov';
 
-// New DOM References based on HTML restructure
-const appContainer = document.querySelector('.app-container');
-const sidebar = document.querySelector('.sidebar');
-const mainContent = document.querySelector('.main-content');
+// --- Robust Core DOM Element Selectors ---
+// Helper functions for safer DOM querying
+function getElement(id, critical = true, parent = document) {
+    const element = parent.getElementById(id);
+    if (!element && critical) {
+        console.error(`CRITICAL: Element with ID '${id}' not found.`);
+    } else if (!element) {
+        console.warn(`Warning: Element with ID '${id}' not found.`);
+    }
+    return element;
+}
 
-const navSearchBtn = document.getElementById('nav-search-btn');
-const navHomeBtn = document.getElementById('nav-home-btn');
-const navFavoritesBtn = document.getElementById('nav-favorites-btn');
-const navHistoryBtn = document.getElementById('nav-history-btn');
+function queryElement(parentElement, selector, elementName, critical = true) {
+    if (!parentElement) {
+        if (critical) console.error(`CRITICAL: Parent element for '${elementName}' is null or undefined.`);
+        else console.warn(`Warning: Parent element for '${elementName}' is null or undefined.`);
+        return null;
+    }
+    const element = parentElement.querySelector(selector);
+    if (!element && critical) {
+        console.error(`CRITICAL: Element '${selector}' for '${elementName}' not found within its parent.`);
+    } else if (!element) {
+        console.warn(`Warning: Element '${selector}' for '${elementName}' not found within its parent.`);
+    }
+    return element;
+}
 
-const searchInput = document.getElementById('search-input'); // Renamed from 'search'
+const appContainer = document.querySelector('.app-container'); // Top-level, assumed to exist
+const sidebar = queryElement(document, '.sidebar', 'sidebar');
+const mainContent = queryElement(document, '.main-content', 'mainContent');
 
-const homeView = document.getElementById('home-view');
-const popularMoviesSection = homeView.querySelector('#popular-movies .carousel-container');
-const popularTvShowsSection = homeView.querySelector('#popular-tv-shows .carousel-container');
+let navSearchBtn = getElement('nav-search-btn', true, sidebar || document); // Try sidebar first, then document
+let navHomeBtn = getElement('nav-home-btn', true, sidebar || document);
+let navFavoritesBtn = getElement('nav-favorites-btn', true, sidebar || document);
+let navHistoryBtn = getElement('nav-history-btn', true, sidebar || document);
 
-const searchResultsView = document.getElementById('search-results-view');
-const searchResultsGrid = searchResultsView.querySelector('#search-results-grid');
+const searchInput = getElement('search-input');
 
-const favoritesView = document.getElementById('favorites-view');
-const favoritesGrid = favoritesView.querySelector('#favorites-grid');
+const homeView = getElement('home-view');
+let popularMoviesSection = queryElement(homeView, '#popular-movies .carousel-container', 'popularMoviesSection', false); // Not critical if homeView itself is missing
+let popularTvShowsSection = queryElement(homeView, '#popular-tv-shows .carousel-container', 'popularTvShowsSection', false);
 
-const historyView = document.getElementById('history-view');
-const historyGrid = historyView.querySelector('#history-grid');
+const searchResultsView = getElement('search-results-view');
+let searchResultsGrid = queryElement(searchResultsView, '#search-results-grid', 'searchResultsGrid', false);
 
-const detailsView = document.getElementById('details-view'); // Renamed from 'details'
+const favoritesView = getElement('favorites-view');
+let favoritesGrid = queryElement(favoritesView, '#favorites-grid', 'favoritesGrid', false);
 
-// DOM elements for details section (within detailsView)
-const detailsPoster = detailsView.querySelector('#details-poster');
-const detailsTitle = document.getElementById('details-title');
-const detailsOverview = document.getElementById('details-overview');
-const detailsRating = document.getElementById('details-rating');
-const videoPlayer = document.getElementById('video-player');
-const regularPlayerButton = document.getElementById('player-regular');
-const vipPlayerButton = document.getElementById('player-vip');
+const historyView = getElement('history-view');
+let historyGrid = queryElement(historyView, '#history-grid', 'historyGrid', false);
+
+const detailsView = getElement('details-view');
+let detailsPoster = queryElement(detailsView, '#details-poster', 'detailsPoster', false);
+let detailsTitle = queryElement(detailsView, '#details-title', 'detailsTitle', false); // No longer getElementById
+let detailsOverview = queryElement(detailsView, '#details-overview', 'detailsOverview', false);
+let detailsRating = queryElement(detailsView, '#details-rating', 'detailsRating', false);
+let videoPlayer = queryElement(detailsView, '#video-player', 'videoPlayer', false);
+let regularPlayerButton = queryElement(detailsView, '#player-regular', 'regularPlayerButton', false);
+let vipPlayerButton = queryElement(detailsView, '#player-vip', 'vipPlayerButton', false);
+let tvSeasonsEpisodesDiv = queryElement(detailsView, '#tv-seasons-episodes', 'tvSeasonsEpisodesDiv', false);
+let seasonButtonsContainer = queryElement(tvSeasonsEpisodesDiv, '#season-buttons-container', 'seasonButtonsContainer', false);
+let episodeListUl = queryElement(tvSeasonsEpisodesDiv, '#episode-list', 'episodeListUl', false);
+
+// Ensure essential top-level views are checked critically if not found by getElement
+if (!appContainer) console.error("CRITICAL: .app-container not found.");
+if (!sidebar) console.error("CRITICAL: .sidebar not found.");
+if (!mainContent) console.error("CRITICAL: .main-content not found.");
+if (!homeView) console.error("CRITICAL: #home-view not found. App cannot initialize correctly.");
+if (!detailsView) console.error("CRITICAL: #details-view not found. App cannot display details.");
+// Other views like searchResultsView, favoritesView, historyView are less critical for initial load.
 
 let currentFocus = 0; // For D-pad navigation
 
@@ -182,6 +217,16 @@ async function getTvShowSeasonDetails(tvId, seasonNumber) {
 
 // --- Display Functions ---
 function displayCarousel(items, container, mediaType) {
+    if (!container) {
+        console.error(`displayCarousel: container is null for mediaType '${mediaType}'. Cannot display items.`);
+        return;
+    }
+    if (!items || !Array.isArray(items)) {
+        console.warn(`displayCarousel: items is null or not an array for mediaType '${mediaType}'. Clearing container.`);
+        container.innerHTML = `<p class="empty-message">No items to display.</p>`; // Or just clear
+        return;
+    }
+
     container.innerHTML = ''; // Clear previous items
     items.forEach(item => {
         if (!item.poster_path) return; // Skip items without posters
@@ -278,8 +323,14 @@ function displayItemsGrid(items, gridContainerElement, viewType) {
 
 
 function displayDetails(item, mediaType) {
+    if (!detailsView) { // Check if detailsView itself is available
+        console.error("displayDetails: detailsView element is null. Cannot display details.");
+        return;
+    }
     // Hide all views then show details view
-    [homeView, searchResultsView, favoritesView, historyView].forEach(view => view.style.display = 'none');
+    const viewsToHide = [homeView, searchResultsView, favoritesView, historyView].filter(v => v); // Filter out null views
+    viewsToHide.forEach(view => view.style.display = 'none');
+
     detailsView.style.display = 'block';
     detailsView.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -337,15 +388,21 @@ function displayDetails(item, mediaType) {
     vipPlayerButton.onclick = () => loadVideo(item.id, mediaType, item, null, null, true);
 
     // Adjust focus target: if seasons are visible, focus first season button, else fav button.
-    let firstFocusElement = favButton;
-    if (detailsView.querySelector('#tv-seasons-episodes').style.display === 'block') {
-        const firstSeasonButton = detailsView.querySelector('#season-buttons-container button');
-        if (firstSeasonButton) firstFocusElement = firstSeasonButton;
+    let firstFocusElement = favButton; // favButton is already queried from detailsView if detailsView exists
+    if (detailsView && tvSeasonsEpisodesDiv && tvSeasonsEpisodesDiv.style.display === 'block') {
+        const firstSeasonButton = queryElement(seasonButtonsContainer, 'button.season-button', 'firstSeasonButtonInDetails', false);
+        if (firstSeasonButton) {
+            firstFocusElement = firstSeasonButton;
+        }
     }
-    updateFocus(null, firstFocusElement, getFocusableElementsInDetailsView());
+    // Ensure detailsView exists before trying to get focusable elements from it
+    if (detailsView) {
+        updateFocus(null, firstFocusElement, getFocusableElementsInDetailsView());
+    }
 }
 
 function getFocusableElementsInDetailsView() {
+    if (!detailsView) return []; // Return empty array if detailsView itself is null
     // Helper to get all focusable elements within the details view, including dynamic ones
     return Array.from(detailsView.querySelectorAll(
         'button.details-action-button, button.player-choice-btn, #season-buttons-container button, #episode-list li'
@@ -354,7 +411,10 @@ function getFocusableElementsInDetailsView() {
 
 
 function populateSeasonSelector(seasons, tvId) {
-    const seasonButtonsContainer = detailsView.querySelector('#season-buttons-container');
+    if (!seasonButtonsContainer) { // Check if container exists
+        console.error("populateSeasonSelector: seasonButtonsContainer is null.");
+        return;
+    }
     seasonButtonsContainer.innerHTML = ''; // Clear old buttons
 
     let firstSeasonButton = null;
@@ -404,8 +464,11 @@ function populateSeasonSelector(seasons, tvId) {
 }
 
 async function fetchAndDisplaySeasonEpisodes(tvId, seasonNumber) {
+    if (!seasonButtonsContainer || !detailsView) { // Added detailsView check
+        console.error("fetchAndDisplaySeasonEpisodes: Critical elements (seasonButtonsContainer or detailsView) are null.");
+        return;
+    }
     // Highlight the active season button
-    const seasonButtonsContainer = detailsView.querySelector('#season-buttons-container');
     seasonButtonsContainer.querySelectorAll('.season-button').forEach(btn => {
         if (btn.dataset.seasonNumber === String(seasonNumber)) {
             btn.classList.add('active-season');
@@ -427,10 +490,13 @@ async function fetchAndDisplaySeasonEpisodes(tvId, seasonNumber) {
 }
 
 function displayEpisodeList(episodes, tvId, seasonNumber) {
-    const episodeListUl = detailsView.querySelector('#episode-list');
+    if (!episodeListUl) { // Check if container exists
+        console.error("displayEpisodeList: episodeListUl is null.");
+        return;
+    }
     episodeListUl.innerHTML = ''; // Clear old episodes
 
-    if (!episodes || episodes.length === 0) {
+    if (!episodes || !Array.isArray(episodes) || episodes.length === 0) { // Added Array.isArray check
         episodeListUl.innerHTML = '<li>No episodes found for this season.</li>';
         return;
     }
@@ -488,7 +554,10 @@ function displayEpisodeList(episodes, tvId, seasonNumber) {
 }
 
 function clearEpisodeList(message = 'Select a season to see episodes.') {
-    const episodeListUl = detailsView.querySelector('#episode-list');
+    if (!episodeListUl) { // Check if container exists
+        console.error("clearEpisodeList: episodeListUl is null. Cannot clear.");
+        return;
+    }
     episodeListUl.innerHTML = `<li>${message}</li>`;
 }
 
@@ -496,6 +565,11 @@ function clearEpisodeList(message = 'Select a season to see episodes.') {
 // --- Player Functions ---
 function loadVideo(tmdbId, mediaType, itemDetails, season = null, episode = null, isVip = false) {
     // Add to history when video is loaded
+    if (!videoPlayer) {
+        console.error("loadVideo: videoPlayer element is null. Cannot load video.");
+        return;
+    }
+
     if(itemDetails) { // Ensure we have item details to add to history
         addToHistory(itemDetails);
     }
@@ -566,16 +640,29 @@ const siteTitleHeader = document.querySelector('.sidebar-logo h1'); // Changed f
 
 // --- View Management ---
 function showView(viewToShow) {
-    [homeView, searchResultsView, favoritesView, historyView, detailsView].forEach(view => {
-        view.style.display = (view === viewToShow) ? 'block' : 'none';
+    // Ensure all view variables are defined before trying to access their .style property
+    const views = [homeView, searchResultsView, favoritesView, historyView, detailsView];
+    views.forEach(view => {
+        if (view) { // Check if the view element actually exists
+            view.style.display = (view === viewToShow) ? 'block' : 'none';
+        } else {
+            // console.warn("showView: A view element is null/undefined."); // Already logged by robust selectors
+        }
     });
-    // Special handling for search input visibility might be needed if it's not always visible
-    if (viewToShow === searchResultsView || viewToShow === homeView) { // Example: show search input for home and search results
-        searchInput.style.display = 'block';
-    } else {
-        // searchInput.style.display = 'none'; // Or keep it always visible in the header
+
+    if (searchInput) { // Check if searchInput exists
+        if (viewToShow === searchResultsView || viewToShow === homeView) {
+            searchInput.style.display = 'block';
+        } else {
+            // searchInput.style.display = 'none'; // Or keep it always visible
+        }
     }
-    videoPlayer.src = ''; // Stop video when changing main views (except if going to details)
+
+    if (videoPlayer) { // Check if videoPlayer exists
+        videoPlayer.src = ''; // Stop video
+    } else {
+        console.warn("showView: videoPlayer element not found, cannot clear src.");
+    }
 }
 
 
@@ -1098,29 +1185,67 @@ function showPopularSections() { // This function is likely deprecated by showVi
 
 // Modify init to show home view and focus the first carousel item on load
 async function init() {
-    showView(homeView); // Ensure home view is visible first
+    if (!homeView) { // Critical check
+        console.error("init: homeView is null. Application cannot initialize properly.");
+        // Potentially display a user-facing error message on the page itself
+        document.body.innerHTML = '<p style="color:white; text-align:center; padding-top: 50px;">Application failed to load. Essential component missing (Home View).</p>';
+        return;
+    }
+    showView(homeView);
 
-    const popularMovies = await getPopularMovies();
-    if (popularMovies && popularMovies.results) {
-        displayCarousel(popularMovies.results, popularMoviesSection, 'movie');
+    // Fetch and display popular movies
+    if (popularMoviesSection) { // Check if section exists
+        const popularMovies = await getPopularMovies();
+        if (popularMovies && popularMovies.results) {
+            displayCarousel(popularMovies.results, popularMoviesSection, 'movie');
+        } else {
+            popularMoviesSection.innerHTML = '<p class="empty-message">Could not load popular movies.</p>';
+        }
+    } else {
+        console.warn("init: popularMoviesSection is null. Cannot display popular movies.");
     }
 
-    const popularTvShows = await getPopularTvShows();
-    if (popularTvShows && popularTvShows.results) {
-        displayCarousel(popularTvShows.results, popularTvShowsSection, 'tv');
+    // Fetch and display popular TV shows
+    if (popularTvShowsSection) { // Check if section exists
+        const popularTvShows = await getPopularTvShows();
+        if (popularTvShows && popularTvShows.results) {
+            displayCarousel(popularTvShows.results, popularTvShowsSection, 'tv');
+        } else {
+            popularTvShowsSection.innerHTML = '<p class="empty-message">Could not load popular TV shows.</p>';
+        }
+    } else {
+        console.warn("init: popularTvShowsSection is null. Cannot display popular TV shows.");
     }
 
-    // Set initial focus on the first item of the first carousel if available,
-    // or the first sidebar item if no carousel items.
-    let firstFocusableElement = homeView.querySelector('.carousel-item');
-    if (!firstFocusableElement) {
-        firstFocusableElement = sidebar.querySelector('li[tabindex="0"]');
+
+    // Set initial focus
+    let firstFocusableElement = null;
+    if (homeView) { // homeView should exist if we passed the initial check
+        firstFocusableElement = queryElement(homeView, '.carousel-item', 'firstCarouselItemInHome', false);
+    }
+
+    if (!firstFocusableElement && sidebar) { // Fallback to sidebar if no carousel items AND sidebar exists
+        firstFocusableElement = queryElement(sidebar, 'li[tabindex="0"]', 'firstSidebarItem', false);
     }
 
     if (firstFocusableElement) {
-        // Determine the list of all potentially focusable items in the initial view for context
-        const initialFocusableItems = Array.from(sidebar.querySelectorAll('li[tabindex="0"]'))
-            .concat(Array.from(homeView.querySelectorAll('.carousel-item')));
-        updateFocus(null, firstFocusableElement, initialFocusableItems);
+        let initialFocusableItems = [];
+        if (sidebar) {
+            initialFocusableItems.push(...Array.from(sidebar.querySelectorAll('li[tabindex="0"]')));
+        }
+        if (homeView) {
+            initialFocusableItems.push(...Array.from(homeView.querySelectorAll('.carousel-item')));
+        }
+        // Filter out nulls just in case, though querySelectorAll shouldn't return them
+        initialFocusableItems = initialFocusableItems.filter(el => el);
+        if (initialFocusableItems.length > 0) {
+             updateFocus(null, firstFocusableElement, initialFocusableItems);
+        } else if(firstFocusableElement) { // If only one focusable (e.g. sidebar only, no content)
+            updateFocus(null, firstFocusableElement, [firstFocusableElement]);
+        }
+    } else {
+        console.warn("init: No initial focusable element found (neither in home carousels nor sidebar).");
+        // As a last resort, focus the search input if it exists
+        if(searchInput) searchInput.focus();
     }
 }
