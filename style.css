@@ -458,16 +458,51 @@ footer {
     margin-bottom: 1rem;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem; /* Increased gap */
 }
-.season-selector-container label {
+.season-label { /* Was season-selector-container label */
     font-weight: 500;
     font-size: 1.1rem;
+    color: #ccc;
 }
-#season-select { /* Reusing .details-action-button for base style, but it's a select */
-    padding: 0.6rem 1rem; /* Adjust padding for select */
-    min-width: 150px;
+#season-buttons-container { /* New container for buttons */
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto; /* Allow horizontal scroll if many seasons */
+    padding-bottom: 0.5rem; /* For scrollbar visibility */
+    flex-wrap: nowrap; /* Ensure buttons stay in one line */
 }
+#season-buttons-container::-webkit-scrollbar { height: 6px; }
+#season-buttons-container::-webkit-scrollbar-thumb { background: #555; border-radius: 3px;}
+
+
+.season-button {
+    padding: 0.6rem 1rem;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #ddd;
+    background-color: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 20px; /* Pill shape */
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
+    white-space: nowrap; /* Prevent button text from wrapping */
+}
+.season-button:hover {
+    background-color: rgba(255,255,255,0.2);
+    color: #fff;
+}
+.season-button.active-season, .season-button.focused {
+    background-color: #e50914;
+    color: #fff;
+    border-color: #e50914;
+    box-shadow: 0 0 10px rgba(229,9,20,0.5);
+}
+.season-button.focused { /* Explicit focus style if different from active */
+    outline: 2px solid #ffc107; /* Example: yellow outline for focus */
+    outline-offset: 1px;
+}
+
 
 #episode-list-container h3 {
     font-size: 1.2rem;
@@ -501,187 +536,272 @@ footer {
     font-weight: bold;
 }
 
+.episode-item {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start; /* Align items to the start of the cross axis */
+    padding: 0.75rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    cursor: pointer;
+    transition: background-color 0.15s ease-out;
+}
+.episode-item:last-child {
+    border-bottom: none;
+}
+
+.episode-still {
+    width: 120px; /* Fixed width for still */
+    height: auto; /* Maintain aspect ratio, or set fixed height e.g. 68px for 16:9 */
+    aspect-ratio: 16/9;
+    object-fit: cover;
+    border-radius: 4px;
+    background-color: #333; /* Placeholder color if image fails */
+}
+
+.episode-text-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem; /* Small gap between text elements */
+}
+
+.episode-title {
+    font-size: 1.05em; /* Relative to parent li's font size */
+    font-weight: 600;
+    color: #f0f0f0;
+    margin: 0;
+}
+
+.episode-overview {
+    font-size: 0.85em;
+    color: #aaa;
+    margin: 0;
+    line-height: 1.4;
+    /* Limit overview text lines */
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Show 2 lines */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.episode-rating {
+    font-size: 0.8em;
+    color: #e50914; /* Red for rating */
+    margin: 0;
+    margin-top: 0.25rem;
+}
+.episode-rating i {
+    margin-right: 0.25rem;
+}
+
+
+.episode-item:hover, .episode-item.focused {
+    background-color: #e50914;
+    color: white;
+}
+.episode-item:hover .episode-title, .episode-item.focused .episode-title {
+    color: white;
+}
+.episode-item:hover .episode-overview, .episode-item.focused .episode-overview {
+    color: #f0f0f0;
+}
+.episode-item:hover .episode-rating, .episode-item.focused .episode-rating {
+    color: #ffdd57; /* Gold for rating on hover/focus */
+}
+.episode-item.focused {
+    outline: 2px solid #ffc107;
+    outline-offset: -2px; /* Inset outline */
+}
+
 
 /* --- UI Scaling for Large Screens (e.g., TVs) --- */
 
-/* Base adjustments for typical HD TVs and larger monitors */
-@media (min-width: 1900px) { /* Start adjustments earlier, around typical Full HD width for density */
+/* Base adjustments for typical HD TVs and larger monitors - MORE AGGRESSIVE */
+@media (min-width: 1900px) {
     :root {
-        font-size: 17px; /* Increase root font size for rem units to scale globally */
+        /* Start with a more significant increase for HD from typical desktop */
+        font-size: 18px; /* Was 17px. Let's try 18px as a new base for "large" */
     }
 
     .sidebar {
-        width: 280px;
+        width: 300px; /* Was 280px */
     }
     .sidebar.collapsed {
-        width: 85px;
+        width: 90px; /* Was 85px */
     }
     .main-content {
-        padding-left: 280px;
+        padding-left: 300px;
     }
     .sidebar.collapsed + .main-content {
-        padding-left: 85px;
+        padding-left: 90px;
     }
      .sidebar ul li {
-        padding: 1rem 1.8rem; /* Adjust padding */
-        font-size: 1.1rem; /* Relative to new root */
+        padding: 1.1rem 2rem; /* Increased padding */
+        font-size: 1.15rem;
     }
     .sidebar ul li i {
-        font-size: 1.3rem;
+        font-size: 1.35rem;
     }
      .sidebar-logo h1 {
-        font-size: 2rem;
+        font-size: 2.2rem;
     }
 
-
     #search-input {
-        padding: 0.85rem 1.1rem;
-        font-size: 1.05rem; /* Relative */
-        max-width: 550px;
+        padding: 0.9rem 1.2rem;
+        font-size: 1.1rem;
+        max-width: 600px; /* Increased max-width */
     }
 
     h2 { /* Section titles */
-        font-size: 1.9rem; /* Relative */
-        margin-bottom: 1.5rem;
+        font-size: 2.1rem; /* Increased */
+        margin-bottom: 1.75rem; /* Increased */
     }
 
+    /* Make items in carousels and grids larger */
     .carousel-item, .result-item {
-        min-width: 200px; /* Slightly larger base for HD */
-        max-width: 230px;
-        /* Allow more items by potentially reducing their relative size if container is very wide */
-        flex-grow: 1; /* Allow items to grow if space permits */
-        flex-shrink: 1; /* Allow items to shrink if needed */
+        min-width: 230px; /* Was 200px */
+        max-width: 260px; /* Was 230px */
+        /* flex-grow: 1; */ /* Keep for now, but min/max are dominant */
+        /* flex-shrink: 1; */
     }
-     .results-grid {
-        /* Attempt to create more columns by allowing items to take up less proportional space */
-        /* This is tricky with flexbox alone for a fixed number of columns.
-           We rely on item min/max widths and container width. */
+    .results-grid .result-item { /* For grids, try to control width more explicitly */
+        flex-basis: calc(100% / 5 - 1.5rem); /* Aim for 5 items at this resolution, was more implicit */
+        min-width: 200px; /* Ensure they don't get too small if container is narrow for 5 items */
     }
+
 
     .carousel-item p, .result-item p {
-        font-size: 1rem; /* Relative */
+        font-size: 1.05rem;
     }
     .carousel-item.focused, .result-item.focused {
-        transform: scale(1.1); /* Consistent focus scale */
+        transform: scale(1.12); /* More noticeable focus */
     }
 
     #details-view .details-container {
-        max-width: 1600px; /* Allow details container to be wider */
-        margin-left: auto;
-        margin-right: auto;
+        max-width: 1800px; /* Was 1600px, allow more width */
+        padding: 2.5rem; /* More padding */
     }
     #details-title {
-        font-size: 3rem; /* Relative */
+        font-size: 3.3rem;
     }
     #details-overview {
-        font-size: 1.15rem; /* Relative */
+        font-size: 1.25rem;
+        line-height: 1.75; /* More line height for readability */
     }
     #details-poster {
-        max-width: 380px;
+        max-width: 420px; /* Was 380px */
     }
     .details-action-button, .player-choice-btn {
-        padding: 0.9rem 1.8rem; /* Relative sizing */
-        font-size: 1.1rem; /* Relative */
+        padding: 1rem 2rem;
+        font-size: 1.15rem;
+        margin-bottom: 1rem; /* More space below buttons */
     }
-    #season-select {
-        padding: 0.8rem 1.2rem; /* Adjust select padding */
+    #season-select, #episode-list li { /* Scaling for season/episode selectors */
+        font-size: 1.1rem;
     }
+    #season-select { padding: 0.9rem 1.3rem; }
+    #episode-list li { padding: 0.7rem 1rem; }
 
 
     #video-player {
-        max-width: 1100px;
+        max-width: 1200px; /* Was 1100px */
     }
 
     .carousel-container, .results-grid {
-        gap: 1.4rem;
+        gap: 1.6rem; /* Increased gap */
     }
 }
 
 
-/* Targeting common 4K width (3840px) and similar very large screens */
+/* Targeting common 4K width (3840px) and similar very large screens - MORE AGGRESSIVE */
 @media (min-width: 3000px) {
     :root {
-        font-size: 20px; /* Further increase root font size */
+        font-size: 22px; /* Was 20px. Significant increase for 4K */
     }
 
     .sidebar {
-        width: 320px; /* Wider sidebar */
+        width: 360px; /* Was 320px */
     }
     .sidebar.collapsed {
-        width: 100px;
+        width: 110px; /* Was 100px */
     }
     .main-content {
-        padding-left: 320px;
+        padding-left: 360px;
     }
     .sidebar.collapsed + .main-content {
-        padding-left: 100px;
+        padding-left: 110px;
     }
      .sidebar ul li {
-        padding: 1.2rem 2.2rem;
-        font-size: 1.25rem; /* Relative */
+        padding: 1.3rem 2.5rem;
+        font-size: 1.3rem;
     }
      .sidebar ul li i {
-        font-size: 1.5rem;
+        font-size: 1.6rem;
     }
     .sidebar-logo h1 {
-        font-size: 2.4rem; /* Relative */
+        font-size: 2.6rem;
     }
 
     #search-input {
-        padding: 1rem 1.3rem;
-        font-size: 1.2rem; /* Relative */
-        max-width: 700px;
+        padding: 1.1rem 1.5rem;
+        font-size: 1.3rem;
+        max-width: 800px; /* Wider search */
     }
 
     h2 { /* Section titles */
-        font-size: 2.2rem; /* Relative */
-        margin-bottom: 2rem;
+        font-size: 2.5rem;
+        margin-bottom: 2.2rem;
     }
 
-    /* For grids, try to ensure items don't get overly wide, allowing more columns. */
     .results-grid .result-item {
-        flex-basis: calc(100% / 6 - 1.5rem); /* Aim for ~6 items per row, accounting for gap */
-        min-width: 180px; /* Still have a min-width to prevent too small items */
-        max-width: 240px; /* Max width to prevent items from becoming too large */
+        /* Aim for ~6-7 items per row, allowing for larger items */
+        flex-basis: calc(100% / 7 - 1.75rem); /* Try for 7, adjust gap if needed */
+        min-width: 200px; /* Min width for items */
+        max-width: 260px; /* Max width, they should be fairly large */
     }
-    .carousel-item { /* Carousels might still have larger items */
-        min-width: 240px;
-        max-width: 280px;
+    .carousel-item {
+        min-width: 260px; /* Was 240px */
+        max-width: 300px; /* Was 280px */
     }
 
 
     .carousel-item p, .result-item p {
-        font-size: 1.1rem; /* Relative */
+        font-size: 1.2rem;
     }
     .carousel-item.focused, .result-item.focused {
-        transform: scale(1.12);
+        transform: scale(1.15); /* Even more pronounced focus */
     }
 
     #details-view .details-container {
-        max-width: 2000px; /* Wider details */
+        max-width: 2400px; /* Was 2000px, allow much wider details */
+        padding: 3rem;
     }
     #details-title {
-        font-size: 3.5rem; /* Relative */
+        font-size: 4rem;
     }
     #details-overview {
-        font-size: 1.3rem; /* Relative */
+        font-size: 1.4rem;
     }
     #details-poster {
-        max-width: 450px;
+        max-width: 500px; /* Was 450px */
     }
     .details-action-button, .player-choice-btn {
-        padding: 1.1rem 2.2rem;
-        font-size: 1.2rem; /* Relative */
+        padding: 1.2rem 2.4rem;
+        font-size: 1.3rem;
     }
-     #season-select {
-        padding: 0.9rem 1.3rem; /* Adjust select padding */
+    #season-select, #episode-list li {
+        font-size: 1.2rem;
     }
+    #season-select { padding: 1rem 1.5rem; }
+    #episode-list li { padding: 0.8rem 1.2rem; }
+
 
     #video-player {
-        max-width: 1400px;
+        max-width: 1600px; /* Was 1400px */
     }
 
     .carousel-container, .results-grid {
-        gap: 1.75rem;
+        gap: 2rem; /* Was 1.75rem */
     }
 }
