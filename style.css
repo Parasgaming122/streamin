@@ -1,0 +1,202 @@
+body {
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    background-color: #141414;
+    color: #fff;
+    line-height: 1.6;
+}
+
+header {
+    background-color: #101010;
+    padding: 1rem;
+    text-align: center;
+    border-bottom: 1px solid #303030;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 2rem;
+    color: #e50914; /* Netflix-like red */
+}
+
+#search {
+    width: 50%;
+    max-width: 400px;
+    padding: 0.75rem;
+    margin-top: 1rem;
+    border: 1px solid #303030;
+    border-radius: 4px;
+    background-color: #333;
+    color: #fff;
+    font-size: 1rem;
+}
+
+#search:focus {
+    outline: none;
+    border-color: #e50914;
+    box-shadow: 0 0 5px rgba(229, 9, 20, 0.5);
+}
+
+main {
+    padding: 1.5rem;
+}
+
+h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid #e50914;
+    padding-bottom: 0.5rem;
+    display: inline-block;
+}
+
+.carousel-container, .results-grid {
+    display: flex;
+    overflow-x: auto; /* Allows horizontal scrolling for carousels */
+    padding-bottom: 1rem; /* Space for scrollbar if needed */
+    gap: 1rem; /* Spacing between items */
+}
+
+.results-grid {
+    flex-wrap: wrap; /* Allow items to wrap in search results */
+    justify-content: flex-start;
+}
+
+.carousel-item, .result-item {
+    background-color: #202020;
+    border-radius: 5px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    min-width: 180px; /* Minimum width for carousel items */
+    max-width: 200px; /* Maximum width for carousel items */
+    text-align: center;
+}
+
+.carousel-item:hover, .result-item:hover,
+.carousel-item.focused, .result-item.focused { /* Style for focused items */
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(229, 9, 20, 0.7);
+    outline: 2px solid #e50914;
+}
+
+.carousel-item img, .result-item img {
+    width: 100%;
+    height: auto;
+    display: block;
+    aspect-ratio: 2/3; /* Maintain poster aspect ratio */
+    object-fit: cover;
+}
+
+.carousel-item p, .result-item p {
+    padding: 0.5rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#details {
+    margin-top: 2rem;
+}
+
+.details-container {
+    display: flex;
+    gap: 2rem;
+    background-color: #181818;
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+
+#details-poster {
+    max-width: 300px;
+    height: auto;
+    border-radius: 5px;
+    object-fit: cover;
+}
+
+.details-info {
+    flex: 1;
+}
+
+#details-title {
+    font-size: 2.2rem;
+    margin-top: 0;
+    color: #e50914;
+}
+
+#details-overview {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+}
+
+.player-options {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+.player-options button {
+    padding: 0.75rem 1.5rem;
+    margin-right: 0.5rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.2s;
+}
+
+#player-regular {
+    background-color: #e50914;
+    color: white;
+}
+
+#player-regular:hover, #player-regular.focused {
+    background-color: #f40612;
+    outline: 2px solid white;
+}
+
+#player-vip {
+    background-color: #555;
+    color: white;
+}
+
+#player-vip:hover, #player-vip.focused {
+    background-color: #666;
+    outline: 2px solid white;
+}
+
+#video-player {
+    width: 100%;
+    max-width: 800px; /* Limit player width */
+    aspect-ratio: 16/9; /* Maintain 16:9 aspect ratio */
+    border: none;
+    border-radius: 5px;
+    margin-top: 1rem;
+}
+
+footer {
+    text-align: center;
+    padding: 1.5rem;
+    margin-top: 2rem;
+    background-color: #101010;
+    border-top: 1px solid #303030;
+    font-size: 0.9rem;
+}
+
+/* Hide scrollbar for carousel containers, but still allow scrolling */
+.carousel-container::-webkit-scrollbar {
+    display: none; /* For Chrome, Safari, and Opera */
+}
+.carousel-container {
+    -ms-overflow-style: none;  /* For Internet Explorer and Edge */
+    scrollbar-width: none;  /* For Firefox */
+}
+
+/* Basic focus outline for accessibility - can be improved */
+*:focus {
+    outline: 2px solid #007bff; /* A generic blue, override for specific elements */
+}
+/* Remove default outline for elements that have custom focus styles */
+.carousel-item:focus, .result-item:focus,
+.player-options button:focus, #search:focus {
+    outline: none;
+}
