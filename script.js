@@ -394,6 +394,12 @@ function populateSeasonSelector(seasons, tvId) {
     // Make the first actual season button focusable by default for D-Pad
     if (firstSeasonButton) {
         firstSeasonButton.tabIndex = 0;
+    } else {
+        // If no season buttons were created (e.g. no seasons with episodes),
+        // ensure the container doesn't steal focus or cause issues.
+        // This case should ideally not leave the user without a focus path.
+        // Focus might naturally go to player buttons or fav button if season UI is empty.
+        console.warn("No season buttons created in populateSeasonSelector.");
     }
 }
 
