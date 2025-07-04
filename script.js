@@ -176,6 +176,10 @@ async function getTvShowDetails(tvId) {
     return fetchTMDB(`tv/${tvId}`);
 }
 
+async function getTvShowSeasonDetails(tvId, seasonNumber) {
+    return fetchTMDB(`tv/${tvId}/season/${seasonNumber}`);
+}
+
 // --- Display Functions ---
 function displayCarousel(items, container, mediaType) {
     container.innerHTML = ''; // Clear previous items
@@ -291,6 +295,33 @@ function displayDetails(item, mediaType) {
 
     videoPlayer.src = ''; // Clear previous video
 
+    // Handle TV Show Season/Episode display
+    const tvSeasonsEpisodesDiv = detailsView.querySelector('#tv-seasons-episodes');
+    if (mediaType === 'tv' && item.seasons) {
+        tvSeasonsEpisodesDiv.style.display = 'block';
+        populateSeasonSelector(item.seasons, item.id);
+        // Fetch and display episodes for the first season (or last watched) by default
+        if (item.seasons.length > 0) {
+            // TMDB API often includes a season 0 for "Specials" which might not be what users want first.
+            // Find the first season with season_number > 0, or default to the first one in the list.
+            let defaultSeason = item.seasons.find(s => s.season_number > 0);
+            if (!defaultSeason && item.seasons.length > 0) defaultSeason = item.seasons[0];
+
+            if (defaultSeason) {
+                fetchAndDisplaySeasonEpisodes(item.id, defaultSeason.season_number);
+                detailsView.querySelector('#season-select').value = defaultSeason.season_number;
+            } else {
+                 clearEpisodeList(); // No seasons to display
+            }
+        } else {
+            clearEpisodeList(); // No seasons to display
+        }
+    } else {
+        tvSeasonsEpisodesDiv.style.display = 'none';
+        clearEpisodeList();
+    }
+
+
     // Favorite button setup
     const favButton = detailsView.querySelector('#add-to-favorites-btn');
     updateFavoriteButton(item.id, isFavorite(item.id)); // Set initial state
@@ -305,8 +336,81 @@ function displayDetails(item, mediaType) {
     regularPlayerButton.onclick = () => loadVideo(item.id, mediaType, item, null, null, false);
     vipPlayerButton.onclick = () => loadVideo(item.id, mediaType, item, null, null, true);
 
-    updateFocus(null, favButton, detailsView.querySelectorAll('button')); // Focus favorite button first
+    updateFocus(null, favButton, detailsView.querySelectorAll('button, select')); // Focus favorite button or season select
 }
+
+function populateSeasonSelector(seasons, tvId) {
+    const seasonSelect = detailsView.querySelector('#season-select');
+    seasonSelect.innerHTML = ''; // Clear old options
+
+    seasons.forEach(season => {
+        // Skip season 0 "Specials" if it has no episodes listed or prefer not to show by default
+        // For now, we list all seasons provided by the main TV details endpoint
+        if (season.name && season.season_number !== undefined) { // Ensure season has a name and number
+            const option = document.createElement('option');
+            option.value = season.season_number;
+            option.textContent = `${season.name} (${season.episode_count} Episodes)`;
+            // Optionally, add more data attributes if needed e.g. data-season-id
+            seasonSelect.appendChild(option);
+        }
+    });
+
+    seasonSelect.onchange = () => {
+        fetchAndDisplaySeasonEpisodes(tvId, seasonSelect.value);
+    };
+}
+
+async function fetchAndDisplaySeasonEpisodes(tvId, seasonNumber) {
+    const seasonDetails = await getTvShowSeasonDetails(tvId, seasonNumber);
+    if (seasonDetails && seasonDetails.episodes) {
+        displayEpisodeList(seasonDetails.episodes, tvId, seasonNumber);
+    } else {
+        clearEpisodeList('Error loading episodes.');
+    }
+}
+
+function displayEpisodeList(episodes, tvId, seasonNumber) {
+    const episodeListUl = detailsView.querySelector('#episode-list');
+    episodeListUl.innerHTML = ''; // Clear old episodes
+
+    if (!episodes || episodes.length === 0) {
+        episodeListUl.innerHTML = '<li>No episodes found for this season.</li>';
+        return;
+    }
+
+    episodes.forEach(episode => {
+        const li = document.createElement('li');
+        li.textContent = `E${episode.episode_number}: ${episode.name || 'Untitled Episode'}`;
+        li.dataset.episodeNumber = episode.episode_number;
+        li.dataset.seasonNumber = seasonNumber;
+        li.dataset.tvId = tvId;
+        li.tabIndex = 0; // Make focusable
+
+        li.onclick = () => {
+            // Update currentItemDetailsForAction before loading video if needed, or pass all details
+            // For simplicity, we'll use the main TV show details for history for now.
+            loadVideo(tvId, 'tv', currentItemDetailsForAction, seasonNumber, episode.episode_number, false); // Default to regular player
+            // Add logic to choose VIP player if needed
+        };
+        li.onfocus = () => { // Add focused class for styling
+            const currentlyFocused = episodeListUl.querySelector('.focused');
+            if(currentlyFocused) currentlyFocused.classList.remove('focused');
+            li.classList.add('focused');
+        };
+         li.onblur = () => { // Remove focused class
+            li.classList.remove('focused');
+        };
+
+
+        episodeListUl.appendChild(li);
+    });
+}
+
+function clearEpisodeList(message = 'Select a season to see episodes.') {
+    const episodeListUl = detailsView.querySelector('#episode-list');
+    episodeListUl.innerHTML = `<li>${message}</li>`;
+}
+
 
 // --- Player Functions ---
 function loadVideo(tmdbId, mediaType, itemDetails, season = null, episode = null, isVip = false) {
@@ -546,15 +650,18 @@ document.addEventListener('keydown', (event) => {
                 } else {
                     // Try to move up within the current grid/list in main content
                     nextElement = navigateGrid(activeElement, 'up', focusableElements);
-                    if (!nextElement && activeElement.closest('.results-grid, .carousel-container, .details-info')) {
-                        // If at the top of a grid/carousel, move to search input
-                        nextElement = searchInput;
-                    } else if (!nextElement) {
-                        // If truly at the top of main content (e.g. search input was the candidate)
-                        // consider moving to sidebar (complex, needs clear entry points)
-                        // For now, ArrowUp from search can go to last sidebar item or first.
-                        // currentFocusableArea = 'sidebar';
-                        // nextElement = sidebar.querySelector('li:last-child');
+
+                    if (!nextElement) { // If navigateGrid returned null (at the top of a grid/section)
+                        if (activeElement.closest('#popular-tv-shows')) {
+                            // Try to move from Popular TV Shows to Popular Movies (last item or last row's first)
+                            const movieItems = Array.from(popularMoviesSection.querySelectorAll('.carousel-item'));
+                            if (movieItems.length > 0) nextElement = movieItems[movieItems.length - 1]; // Focus last movie item
+                        } else if (activeElement.closest('.results-grid, .carousel-container, .details-info')) {
+                             // If at the top of any other grid/carousel, move to search input
+                            nextElement = searchInput;
+                        }
+                        // If still no nextElement (e.g., searchInput was already active or no other place to go up)
+                        // it will remain null, and focus won't change, which is fine.
                     }
                 }
             }
@@ -564,25 +671,28 @@ document.addEventListener('keydown', (event) => {
             if (currentFocusableArea === 'sidebar') {
                 nextElement = getNextFocusable(currentIndex, 1, focusableElements);
             } else if (currentFocusableArea === 'main-header' && activeElement === searchInput) {
-                // Move from search input to the first item in the current main view
+                 // If search input is empty and ArrowDown, try to cycle search history
+                if (searchInput.value === '') {
+                    const searchHistory = getSearchHistory();
+                    if (searchHistory.length > 0) {
+                        currentSearchHistoryIndex = (currentSearchHistoryIndex + 1) % searchHistory.length;
+                        searchInput.value = searchHistory[currentSearchHistoryIndex];
+                        nextElement = searchInput; // Keep focus on search input
+                        break; // Don't move to main content yet
+                    }
+                }
+                // If search input has text or no history, move to the first item in the current main view
                 const mainViewElements = getFocusableElementsInCurrentView();
                 if (mainViewElements.length > 0) nextElement = mainViewElements[0];
                 currentFocusableArea = 'main-content';
-            } else if (currentFocusableArea === 'main-header' && activeElement === searchInput && searchInput.value === '') {
-                // Cycle through search history if input is empty and ArrowDown is pressed
-                const searchHistory = getSearchHistory();
-                if (searchHistory.length > 0) {
-                    currentSearchHistoryIndex = (currentSearchHistoryIndex + 1) % searchHistory.length;
-                    searchInput.value = searchHistory[currentSearchHistoryIndex];
-                    nextElement = searchInput; // Keep focus on search input
-                } else {
-                    // If no history, behave as if moving to main content
-                    const mainViewElements = getFocusableElementsInCurrentView();
-                    if (mainViewElements.length > 0) nextElement = mainViewElements[0];
-                    currentFocusableArea = 'main-content';
-                }
+
             } else if (currentFocusableArea === 'main-content') {
                 nextElement = navigateGrid(activeElement, 'down', focusableElements);
+                if (!nextElement && activeElement.closest('#popular-movies')) {
+                    // Try to move from Popular Movies to Popular TV Shows
+                    const firstTvShowItem = popularTvShowsSection.querySelector('.carousel-item');
+                    if (firstTvShowItem) nextElement = firstTvShowItem;
+                }
             }
             break;
 
@@ -740,18 +850,28 @@ function calculateItemsPerRow(containerElement, itemElement) {
 
 
 function navigateGrid(currentElement, direction, allFocusableInContext) {
-    const parentGrid = currentElement.closest('.results-grid, .carousel-container');
-    const parentView = currentElement.closest('section[id$="-view"], section[id^="popular-"]');
+    const parentGrid = currentElement.closest('.results-grid, .carousel-container'); // For carousels and grids
+    const parentView = currentElement.closest('section[id$="-view"], section[id^="popular-"]'); // For any major view section
+    const detailsInfoArea = currentElement.closest('.details-info'); // Specific to details page buttons
+    const episodeListArea = currentElement.closest('#episode-list-container'); // Specific to episode list
     let itemsInGrid;
 
-    if (parentGrid) { // If inside a specific grid or carousel
+    if (detailsInfoArea && !episodeListArea) { // Action buttons (Fav, Player Regular, Player VIP)
+        itemsInGrid = Array.from(detailsInfoArea.querySelectorAll('button.details-action-button, button.player-choice-btn, select#season-select'))
+                            .filter(el => el.offsetParent !== null && !el.disabled);
+        // Make sure season-select is also part of this loop if it's visible
+        if (!detailsView.querySelector('#tv-seasons-episodes[style*="display: block"]') || !detailsView.querySelector('#season-select')) {
+            itemsInGrid = itemsInGrid.filter(el => el.id !== 'season-select');
+        }
+
+    } else if (episodeListArea) { // Episode list items
+        itemsInGrid = Array.from(episodeListArea.querySelectorAll('#episode-list li'))
+                            .filter(el => el.offsetParent !== null && !el.disabled);
+    } else if (parentGrid) { // If inside a specific grid or carousel
         itemsInGrid = Array.from(parentGrid.querySelectorAll('.result-item, .carousel-item'))
-                           .filter(el => el.offsetParent !== null);
-    } else if (parentView && parentView.id === 'details-view') { // Special handling for details view buttons
-         itemsInGrid = Array.from(parentView.querySelectorAll('button'))
-                            .filter(el => el.offsetParent !== null);
-    } else { // Fallback to all focusable in context if not in a clear grid
-        itemsInGrid = allFocusableInContext.filter(el => el.offsetParent !==null);
+                           .filter(el => el.offsetParent !== null && !el.disabled);
+    } else { // Fallback to all focusable in the current view context if not in a clear grid/details area
+        itemsInGrid = getFocusableElementsInCurrentView().filter(el => el.offsetParent !== null && !el.disabled);
     }
 
     if (!itemsInGrid || itemsInGrid.length === 0) return null;
@@ -766,10 +886,35 @@ function navigateGrid(currentElement, direction, allFocusableInContext) {
             return currentIndexInGrid < itemsInGrid.length - 1 ? itemsInGrid[currentIndexInGrid + 1] : null;
         case 'up':
         case 'down':
-            if (!parentGrid || parentGrid.classList.contains('carousel-container')) {
-                // For carousels or non-grid contexts, up/down might mean exiting or is unhandled here
+            if (detailsInfoArea) { // Simple up/down cycle for details buttons
+                const currentIndex = itemsInGrid.indexOf(currentElement);
+                if (currentIndex === -1) return null;
+                let nextIndex;
+                if (direction === 'up') {
+                    // For details buttons and episode list, simple cycle with wrap
+                    nextIndex = currentIndex > 0 ? currentIndex - 1 : itemsInGrid.length - 1;
+                } else { // down
+                    nextIndex = currentIndex < itemsInGrid.length - 1 ? currentIndex + 1 : 0;
+                }
+                return itemsInGrid[nextIndex];
+            } else if (currentElement.closest('#episode-list')) { // Handling for episode list items
+                const currentIndex = itemsInGrid.indexOf(currentElement);
+                if (currentIndex === -1) return null;
+                let nextIndex;
+                 if (direction === 'up') {
+                    nextIndex = currentIndex > 0 ? currentIndex - 1 : null; // Stop at top
+                    if (nextIndex === null && itemsInGrid.length > 0) { // Optionally move to season select
+                        // return detailsView.querySelector('#season-select');
+                    }
+                } else { // down
+                    nextIndex = currentIndex < itemsInGrid.length - 1 ? currentIndex + 1 : null; // Stop at bottom
+                }
+                return itemsInGrid[nextIndex] || null; // Return null if at edge
+            } else if (!parentGrid || parentGrid.classList.contains('carousel-container')) {
+                // For carousels or non-grid contexts (that are not details buttons or episode list), up/down might mean exiting
                 return null; // Let outer logic handle (e.g. move to search or sidebar)
             }
+            // Grid navigation for up/down
             const itemsPerRow = calculateItemsPerRow(parentGrid, itemsInGrid[0]);
             if (itemsPerRow <= 0) return null; // Should not happen if items exist
 

@@ -62,12 +62,23 @@
                     <p id="details-overview"></p>
                     <p><strong>Rating:</strong> <span id="details-rating"></span></p>
                     <button id="add-to-favorites-btn" class="details-action-button"><i class="fas fa-heart"></i> Add to Favorites</button>
-                    <!-- Placeholder for other actions like share, etc. -->
+
+                    <div id="tv-seasons-episodes" style="display:none;">
+                        <div class="season-selector-container">
+                            <label for="season-select">Season:</label>
+                            <select id="season-select" class="details-action-button"></select>
+                        </div>
+                        <div id="episode-list-container">
+                            <h3>Episodes</h3>
+                            <ul id="episode-list"></ul>
+                        </div>
+                    </div>
+
                     <div class="player-options">
                         <button id="player-regular" class="player-choice-btn">Regular Player</button>
                         <button id="player-vip" class="player-choice-btn">VIP Player</button>
                     </div>
-                    <iframe id="video-player" width="560" height="315" src="" frameborder="0" allowfullscreen sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
+                    <iframe id="video-player" width="560" height="315" src="" frameborder="0" allowfullscreen></iframe>
                 </div>
             </div>
         </section>

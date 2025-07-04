@@ -444,3 +444,169 @@ footer {
     padding: 3rem 1rem; /* More padding */
     font-style: italic;
 }
+
+/* TV Season/Episode Selector Styling */
+#tv-seasons-episodes {
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background-color: rgba(255,255,255,0.05);
+    border-radius: 8px;
+}
+
+.season-selector-container {
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.season-selector-container label {
+    font-weight: 500;
+    font-size: 1.1rem;
+}
+#season-select { /* Reusing .details-action-button for base style, but it's a select */
+    padding: 0.6rem 1rem; /* Adjust padding for select */
+    min-width: 150px;
+}
+
+#episode-list-container h3 {
+    font-size: 1.2rem;
+    color: #e50914;
+    margin-bottom: 0.5rem;
+}
+
+#episode-list {
+    list-style: none;
+    padding: 0;
+    max-height: 200px; /* Limit height and make scrollable if many episodes */
+    overflow-y: auto;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 4px;
+}
+
+#episode-list li {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    transition: background-color 0.15s ease-out;
+}
+#episode-list li:last-child {
+    border-bottom: none;
+}
+#episode-list li:hover, #episode-list li.focused {
+    background-color: #e50914;
+    color: white;
+}
+#episode-list li.focused {
+    font-weight: bold;
+}
+
+
+/* --- UI Scaling for 4K TVs --- */
+@media (min-width: 2500px) { /* Targeting common 4K width (3840px) and similar large screens */
+    body {
+        font-size: 1.1rem; /* Base font size increase */
+    }
+
+    .sidebar {
+        width: 300px; /* Wider sidebar */
+    }
+    .sidebar.collapsed {
+        width: 90px;
+    }
+    .main-content {
+        padding-left: 300px;
+    }
+    .sidebar.collapsed + .main-content {
+        padding-left: 90px;
+    }
+    .sidebar ul li {
+        padding: 1.1rem 2rem;
+        font-size: 1.2rem;
+    }
+     .sidebar ul li i {
+        font-size: 1.4rem;
+    }
+    .sidebar-logo h1 {
+        font-size: 2.2rem;
+    }
+
+
+    #search-input {
+        padding: 0.9rem 1.2rem;
+        font-size: 1.1rem;
+        max-width: 600px;
+    }
+
+    h2 { /* Section titles */
+        font-size: 2rem;
+        margin-bottom: 1.75rem;
+    }
+
+    .carousel-item, .result-item {
+        min-width: 220px; /* Larger items */
+        max-width: 250px;
+    }
+    .carousel-item p, .result-item p {
+        font-size: 1.05rem; /* Larger text in item cards */
+    }
+    .carousel-item.focused, .result-item.focused {
+        transform: scale(1.12); /* Slightly more pronounced focus scale */
+    }
+
+
+    #details-title {
+        font-size: 3.2rem;
+    }
+    #details-overview {
+        font-size: 1.2rem;
+    }
+    #details-poster {
+        max-width: 400px; /* Larger poster in details */
+    }
+    .details-action-button, .player-choice-btn {
+        padding: 1rem 2rem;
+        font-size: 1.15rem;
+    }
+
+    #video-player {
+        max-width: 1200px; /* Wider video player */
+    }
+
+    /* Adjust grid/carousel to show more items if possible by reducing min-width slightly if needed,
+       or ensure the container can grow to fill more space.
+       The current flex setup should allow more items if item widths are suitable.
+       Alternatively, we could increase the number of columns for grids if they were CSS Grid based.
+       For flex carousels, more items will show if the container is wider and items are not overly large.
+    */
+    .carousel-container, .results-grid {
+        gap: 1.5rem; /* Slightly larger gap for larger items */
+    }
+}
+
+@media (min-width: 3800px) { /* Specific overrides for very wide 4K screens */
+    body {
+        font-size: 1.2rem;
+    }
+    .sidebar {
+        width: 320px;
+    }
+    .sidebar.collapsed {
+        width: 100px;
+    }
+    .main-content {
+        padding-left: 320px;
+    }
+    .sidebar.collapsed + .main-content {
+        padding-left: 100px;
+    }
+
+    h2 { font-size: 2.2rem; }
+    .carousel-item, .result-item {
+        min-width: 240px;
+        max-width: 280px;
+    }
+     #details-title { font-size: 3.5rem; }
+    #details-overview { font-size: 1.3rem; }
+    #details-poster { max-width: 450px; }
+}
