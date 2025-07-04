@@ -502,94 +502,110 @@ footer {
 }
 
 
-/* --- UI Scaling for 4K TVs --- */
-@media (min-width: 2500px) { /* Targeting common 4K width (3840px) and similar large screens */
-    body {
-        font-size: 1.1rem; /* Base font size increase */
+/* --- UI Scaling for Large Screens (e.g., TVs) --- */
+
+/* Base adjustments for typical HD TVs and larger monitors */
+@media (min-width: 1900px) { /* Start adjustments earlier, around typical Full HD width for density */
+    :root {
+        font-size: 17px; /* Increase root font size for rem units to scale globally */
     }
 
     .sidebar {
-        width: 300px; /* Wider sidebar */
+        width: 280px;
     }
     .sidebar.collapsed {
-        width: 90px;
+        width: 85px;
     }
     .main-content {
-        padding-left: 300px;
+        padding-left: 280px;
     }
     .sidebar.collapsed + .main-content {
-        padding-left: 90px;
+        padding-left: 85px;
     }
-    .sidebar ul li {
-        padding: 1.1rem 2rem;
-        font-size: 1.2rem;
+     .sidebar ul li {
+        padding: 1rem 1.8rem; /* Adjust padding */
+        font-size: 1.1rem; /* Relative to new root */
     }
-     .sidebar ul li i {
-        font-size: 1.4rem;
+    .sidebar ul li i {
+        font-size: 1.3rem;
     }
-    .sidebar-logo h1 {
-        font-size: 2.2rem;
+     .sidebar-logo h1 {
+        font-size: 2rem;
     }
 
 
     #search-input {
-        padding: 0.9rem 1.2rem;
-        font-size: 1.1rem;
-        max-width: 600px;
+        padding: 0.85rem 1.1rem;
+        font-size: 1.05rem; /* Relative */
+        max-width: 550px;
     }
 
     h2 { /* Section titles */
-        font-size: 2rem;
-        margin-bottom: 1.75rem;
+        font-size: 1.9rem; /* Relative */
+        margin-bottom: 1.5rem;
     }
 
     .carousel-item, .result-item {
-        min-width: 220px; /* Larger items */
-        max-width: 250px;
+        min-width: 200px; /* Slightly larger base for HD */
+        max-width: 230px;
+        /* Allow more items by potentially reducing their relative size if container is very wide */
+        flex-grow: 1; /* Allow items to grow if space permits */
+        flex-shrink: 1; /* Allow items to shrink if needed */
     }
+     .results-grid {
+        /* Attempt to create more columns by allowing items to take up less proportional space */
+        /* This is tricky with flexbox alone for a fixed number of columns.
+           We rely on item min/max widths and container width. */
+    }
+
     .carousel-item p, .result-item p {
-        font-size: 1.05rem; /* Larger text in item cards */
+        font-size: 1rem; /* Relative */
     }
     .carousel-item.focused, .result-item.focused {
-        transform: scale(1.12); /* Slightly more pronounced focus scale */
+        transform: scale(1.1); /* Consistent focus scale */
     }
 
-
+    #details-view .details-container {
+        max-width: 1600px; /* Allow details container to be wider */
+        margin-left: auto;
+        margin-right: auto;
+    }
     #details-title {
-        font-size: 3.2rem;
+        font-size: 3rem; /* Relative */
     }
     #details-overview {
-        font-size: 1.2rem;
+        font-size: 1.15rem; /* Relative */
     }
     #details-poster {
-        max-width: 400px; /* Larger poster in details */
+        max-width: 380px;
     }
     .details-action-button, .player-choice-btn {
-        padding: 1rem 2rem;
-        font-size: 1.15rem;
+        padding: 0.9rem 1.8rem; /* Relative sizing */
+        font-size: 1.1rem; /* Relative */
     }
+    #season-select {
+        padding: 0.8rem 1.2rem; /* Adjust select padding */
+    }
+
 
     #video-player {
-        max-width: 1200px; /* Wider video player */
+        max-width: 1100px;
     }
 
-    /* Adjust grid/carousel to show more items if possible by reducing min-width slightly if needed,
-       or ensure the container can grow to fill more space.
-       The current flex setup should allow more items if item widths are suitable.
-       Alternatively, we could increase the number of columns for grids if they were CSS Grid based.
-       For flex carousels, more items will show if the container is wider and items are not overly large.
-    */
     .carousel-container, .results-grid {
-        gap: 1.5rem; /* Slightly larger gap for larger items */
+        gap: 1.4rem;
     }
 }
 
-@media (min-width: 3800px) { /* Specific overrides for very wide 4K screens */
-    body {
-        font-size: 1.2rem;
+
+/* Targeting common 4K width (3840px) and similar very large screens */
+@media (min-width: 3000px) {
+    :root {
+        font-size: 20px; /* Further increase root font size */
     }
+
     .sidebar {
-        width: 320px;
+        width: 320px; /* Wider sidebar */
     }
     .sidebar.collapsed {
         width: 100px;
@@ -600,13 +616,72 @@ footer {
     .sidebar.collapsed + .main-content {
         padding-left: 100px;
     }
+     .sidebar ul li {
+        padding: 1.2rem 2.2rem;
+        font-size: 1.25rem; /* Relative */
+    }
+     .sidebar ul li i {
+        font-size: 1.5rem;
+    }
+    .sidebar-logo h1 {
+        font-size: 2.4rem; /* Relative */
+    }
 
-    h2 { font-size: 2.2rem; }
-    .carousel-item, .result-item {
+    #search-input {
+        padding: 1rem 1.3rem;
+        font-size: 1.2rem; /* Relative */
+        max-width: 700px;
+    }
+
+    h2 { /* Section titles */
+        font-size: 2.2rem; /* Relative */
+        margin-bottom: 2rem;
+    }
+
+    /* For grids, try to ensure items don't get overly wide, allowing more columns. */
+    .results-grid .result-item {
+        flex-basis: calc(100% / 6 - 1.5rem); /* Aim for ~6 items per row, accounting for gap */
+        min-width: 180px; /* Still have a min-width to prevent too small items */
+        max-width: 240px; /* Max width to prevent items from becoming too large */
+    }
+    .carousel-item { /* Carousels might still have larger items */
         min-width: 240px;
         max-width: 280px;
     }
-     #details-title { font-size: 3.5rem; }
-    #details-overview { font-size: 1.3rem; }
-    #details-poster { max-width: 450px; }
+
+
+    .carousel-item p, .result-item p {
+        font-size: 1.1rem; /* Relative */
+    }
+    .carousel-item.focused, .result-item.focused {
+        transform: scale(1.12);
+    }
+
+    #details-view .details-container {
+        max-width: 2000px; /* Wider details */
+    }
+    #details-title {
+        font-size: 3.5rem; /* Relative */
+    }
+    #details-overview {
+        font-size: 1.3rem; /* Relative */
+    }
+    #details-poster {
+        max-width: 450px;
+    }
+    .details-action-button, .player-choice-btn {
+        padding: 1.1rem 2.2rem;
+        font-size: 1.2rem; /* Relative */
+    }
+     #season-select {
+        padding: 0.9rem 1.3rem; /* Adjust select padding */
+    }
+
+    #video-player {
+        max-width: 1400px;
+    }
+
+    .carousel-container, .results-grid {
+        gap: 1.75rem;
+    }
 }
