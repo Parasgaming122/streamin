@@ -3,15 +3,35 @@ const baseUrl = 'https://api.themoviedb.org/3';
 const imageBaseUrl = 'https://image.tmdb.org/t/p/w500';
 const multiEmbedBaseUrl = 'https://multiembed.mov';
 
-const popularMoviesSection = document.getElementById('popular-movies').querySelector('.carousel-container');
-const popularTvShowsSection = document.getElementById('popular-tv-shows').querySelector('.carousel-container');
-const searchResultsSection = document.getElementById('search-results');
-const searchResultsGrid = searchResultsSection.querySelector('.results-grid');
-const detailsSection = document.getElementById('details');
-const searchInput = document.getElementById('search');
+// New DOM References based on HTML restructure
+const appContainer = document.querySelector('.app-container');
+const sidebar = document.querySelector('.sidebar');
+const mainContent = document.querySelector('.main-content');
 
-// DOM elements for details section
-const detailsPoster = document.getElementById('details-poster');
+const navSearchBtn = document.getElementById('nav-search-btn');
+const navHomeBtn = document.getElementById('nav-home-btn');
+const navFavoritesBtn = document.getElementById('nav-favorites-btn');
+const navHistoryBtn = document.getElementById('nav-history-btn');
+
+const searchInput = document.getElementById('search-input'); // Renamed from 'search'
+
+const homeView = document.getElementById('home-view');
+const popularMoviesSection = homeView.querySelector('#popular-movies .carousel-container');
+const popularTvShowsSection = homeView.querySelector('#popular-tv-shows .carousel-container');
+
+const searchResultsView = document.getElementById('search-results-view');
+const searchResultsGrid = searchResultsView.querySelector('#search-results-grid');
+
+const favoritesView = document.getElementById('favorites-view');
+const favoritesGrid = favoritesView.querySelector('#favorites-grid');
+
+const historyView = document.getElementById('history-view');
+const historyGrid = historyView.querySelector('#history-grid');
+
+const detailsView = document.getElementById('details-view'); // Renamed from 'details'
+
+// DOM elements for details section (within detailsView)
+const detailsPoster = detailsView.querySelector('#details-poster');
 const detailsTitle = document.getElementById('details-title');
 const detailsOverview = document.getElementById('details-overview');
 const detailsRating = document.getElementById('details-rating');
@@ -20,6 +40,106 @@ const regularPlayerButton = document.getElementById('player-regular');
 const vipPlayerButton = document.getElementById('player-vip');
 
 let currentFocus = 0; // For D-pad navigation
+
+// --- LocalStorage Keys ---
+const FAVORITES_KEY = 'cineStreamFavorites';
+const HISTORY_KEY = 'cineStreamHistory';
+const SEARCH_HISTORY_KEY = 'cineStreamSearchHistory';
+
+// --- Data Management Functions (Favorites & History & Search History) ---
+function getSearchHistory() {
+    return JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY)) || [];
+}
+
+function addToSearchHistory(query) {
+    let searches = getSearchHistory();
+    // Remove query if it already exists to move it to the top
+    searches = searches.filter(s => s.toLowerCase() !== query.toLowerCase());
+    searches.unshift(query);
+    // Limit history size
+    if (searches.length > 10) { // Keep last 10 searches
+        searches.pop();
+    }
+    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(searches));
+    console.log('Added to search history:', query);
+}
+
+
+// --- Data Management Functions (Favorites & History) ---
+function getFavorites() {
+    return JSON.parse(localStorage.getItem(FAVORITES_KEY)) || [];
+}
+
+function isFavorite(itemId) {
+    const favorites = getFavorites();
+    return favorites.some(fav => fav.id === itemId);
+}
+
+function addToFavorites(item) {
+    const favorites = getFavorites();
+    if (!isFavorite(item.id)) {
+        // Store a summary of the item, not the whole huge object
+        favorites.push({
+            id: item.id,
+            title: item.title || item.name,
+            poster_path: item.poster_path,
+            media_type: item.media_type || (item.title ? 'movie' : 'tv') // Infer media_type if not present
+        });
+        localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+        console.log('Added to favorites:', item.title || item.name);
+        updateFavoriteButton(item.id, true); // Update UI
+    }
+}
+
+function removeFromFavorites(itemId) {
+    let favorites = getFavorites();
+    favorites = favorites.filter(fav => fav.id !== itemId);
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+    console.log('Removed from favorites:', itemId);
+    updateFavoriteButton(itemId, false); // Update UI
+}
+
+function getHistory() {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+}
+
+function addToHistory(item) {
+    let history = getHistory();
+    // Remove item if it already exists to move it to the top (most recent)
+    history = history.filter(histItem => histItem.id !== item.id);
+    history.unshift({ // Add to the beginning of the array
+        id: item.id,
+        title: item.title || item.name,
+        poster_path: item.poster_path,
+        media_type: item.media_type || (item.title ? 'movie' : 'tv'),
+        watchedAt: new Date().toISOString()
+    });
+    // Optional: Limit history size, e.g., to 100 items
+    if (history.length > 100) {
+        history.pop();
+    }
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    console.log('Added to history:', item.title || item.name);
+}
+
+// Update favorite button UI
+function updateFavoriteButton(itemId, isFav) {
+    const favButton = detailsView.querySelector('#add-to-favorites-btn');
+    if (favButton) { // Check if button exists in current view
+        const icon = favButton.querySelector('i');
+        if (isFav) {
+            favButton.innerHTML = '<i class="fas fa-check"></i> Favorited';
+            favButton.classList.add('is-favorite');
+        } else {
+            favButton.innerHTML = '<i class="fas fa-heart"></i> Add to Favorites';
+            favButton.classList.remove('is-favorite');
+        }
+        favButton.dataset.itemId = itemId; // Ensure itemId is associated
+    }
+}
+
+// --- Global variable to store current item details for history/favorites ---
+let currentItemDetailsForAction = null;
 
 // --- API Fetching Functions ---
 async function fetchTMDB(endpoint, params = '') {
@@ -93,86 +213,110 @@ function displayCarousel(items, container, mediaType) {
     });
 }
 
-function displaySearchResults(results) {
-    searchResultsGrid.innerHTML = ''; // Clear previous results
-    results.forEach(item => {
-        if (!item.poster_path && item.media_type !== 'person') return; // Skip items without posters or people
-        if (item.media_type === 'person') return; // Skip people for now
+// Generic function to display items in a grid (used for search, favorites, history)
+function displayItemsGrid(items, gridContainerElement, viewType) {
+    gridContainerElement.innerHTML = ''; // Clear previous items
+    if (!items || items.length === 0) {
+        gridContainerElement.innerHTML = `<p class="empty-message">No ${viewType} found.</p>`;
+        return;
+    }
+
+    items.forEach(item => {
+        // Ensure item has necessary properties, even from localStorage
+        const id = item.id;
+        const title = item.title || item.name;
+        const posterPath = item.poster_path;
+        const mediaType = item.media_type || (item.title ? 'movie' : 'tv'); // Infer if needed
+
+        if (!posterPath && mediaType !== 'person') return;
+        if (mediaType === 'person') return;
 
         const card = document.createElement('div');
-        card.classList.add('result-item');
-        card.dataset.id = item.id;
-        card.dataset.mediaType = item.media_type; // 'movie' or 'tv'
-        card.tabIndex = 0; // Make it focusable
+        card.classList.add('result-item'); // Re-use existing class for styling
+        card.dataset.id = id;
+        card.dataset.mediaType = mediaType;
+        card.tabIndex = 0;
 
         const img = document.createElement('img');
-        img.src = item.poster_path ? `${imageBaseUrl}${item.poster_path}` : 'placeholder.jpg'; // Add a placeholder image if no poster
-        img.alt = item.title || item.name;
+        img.src = posterPath ? `${imageBaseUrl}${posterPath}` : 'placeholder.jpg';
+        img.alt = title;
 
-        const title = document.createElement('p');
-        title.textContent = item.title || item.name;
+        const titleEl = document.createElement('p');
+        titleEl.textContent = title;
 
         card.appendChild(img);
-        card.appendChild(title);
-        searchResultsGrid.appendChild(card);
+        card.appendChild(titleEl);
+        gridContainerElement.appendChild(card);
 
         card.addEventListener('click', async () => {
-            let details;
-            if (item.media_type === 'movie') {
-                details = await getMovieDetails(item.id);
-            } else if (item.media_type === 'tv') {
-                details = await getTvShowDetails(item.id);
+            // Fetch full details again when clicking from fav/history for consistency
+            let fullDetails;
+            if (mediaType === 'movie') {
+                fullDetails = await getMovieDetails(id);
+            } else if (mediaType === 'tv') {
+                fullDetails = await getTvShowDetails(id);
             }
-            if (details) {
-                displayDetails(details, item.media_type);
+            if (fullDetails) {
+                displayDetails(fullDetails, mediaType);
+            } else {
+                // Fallback if fetching full details fails, use the stored item
+                displayDetails(item, mediaType);
             }
         });
     });
-    // Reset focus to the first search result if any
-    currentFocus = 0;
-    const focusableElements = document.querySelectorAll('.result-item');
-    if (focusableElements.length > 0) {
-        focusableElements[0].classList.add('focused');
-        focusableElements[0].focus();
+
+    // Focus the first item in the grid
+    const firstItem = gridContainerElement.querySelector('.result-item');
+    if (firstItem) {
+        updateFocus(null, firstItem, gridContainerElement.querySelectorAll('.result-item'));
     }
 }
 
-function displayDetails(item, mediaType) {
-    // Hide other sections
-    document.getElementById('popular-movies').style.display = 'none';
-    document.getElementById('popular-tv-shows').style.display = 'none';
-    searchResultsSection.style.display = 'none';
 
-    // Show details section
-    detailsSection.style.display = 'block';
+function displayDetails(item, mediaType) {
+    // Hide all views then show details view
+    [homeView, searchResultsView, favoritesView, historyView].forEach(view => view.style.display = 'none');
+    detailsView.style.display = 'block';
+    detailsView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    currentItemDetailsForAction = item; // Store for fav/history actions
 
     detailsPoster.src = item.poster_path ? `${imageBaseUrl}${item.poster_path}` : 'placeholder.jpg';
     detailsTitle.textContent = item.title || item.name;
     detailsOverview.textContent = item.overview;
     detailsRating.textContent = item.vote_average ? item.vote_average.toFixed(1) : 'N/A';
 
-    // Store current item's ID and type for player buttons
-    detailsSection.dataset.id = item.id;
-    detailsSection.dataset.mediaType = mediaType;
-    detailsSection.dataset.tmdbId = item.id; // Specifically for TMDB id based players
+    detailsView.dataset.id = item.id;
+    detailsView.dataset.mediaType = mediaType;
 
-    // Reset video player src
-    videoPlayer.src = '';
-    detailsSection.scrollIntoView({ behavior: 'smooth', block: 'start' }); // Scroll to top of details
+    videoPlayer.src = ''; // Clear previous video
 
-    // Set up player buttons (actual video loading will be handled by their event listeners in step 4)
-    regularPlayerButton.onclick = () => loadVideo(item.id, mediaType, null, null, false);
-    vipPlayerButton.onclick = () => loadVideo(item.id, mediaType, null, null, true);
+    // Favorite button setup
+    const favButton = detailsView.querySelector('#add-to-favorites-btn');
+    updateFavoriteButton(item.id, isFavorite(item.id)); // Set initial state
+    favButton.onclick = () => {
+        if (isFavorite(item.id)) {
+            removeFromFavorites(item.id);
+        } else {
+            addToFavorites(item); // Pass the full item object
+        }
+    };
 
-    // Focus on the regular player button by default when details are shown
-    regularPlayerButton.focus();
-    // You might want to add 'focused' class management here as well for visual consistency
+    regularPlayerButton.onclick = () => loadVideo(item.id, mediaType, item, null, null, false);
+    vipPlayerButton.onclick = () => loadVideo(item.id, mediaType, item, null, null, true);
+
+    updateFocus(null, favButton, detailsView.querySelectorAll('button')); // Focus favorite button first
 }
 
 // --- Player Functions ---
-function loadVideo(tmdbId, mediaType, season = null, episode = null, isVip = false) {
+function loadVideo(tmdbId, mediaType, itemDetails, season = null, episode = null, isVip = false) {
+    // Add to history when video is loaded
+    if(itemDetails) { // Ensure we have item details to add to history
+        addToHistory(itemDetails);
+    }
+
     let videoUrl = '';
-    const playerType = isVip ? 'directstream.php' : ''; // directstream.php for VIP, empty for regular (multiembed.mov root)
+    // const playerType = isVip ? 'directstream.php' : ''; No, this was wrong. Base URL changes.
 
     if (mediaType === 'movie') {
         if (isVip) {
@@ -233,184 +377,452 @@ async function init() {
     }
 }
 
-const siteTitle = document.querySelector('header h1');
+const siteTitleHeader = document.querySelector('.sidebar-logo h1'); // Changed from header h1
+
+// --- View Management ---
+function showView(viewToShow) {
+    [homeView, searchResultsView, favoritesView, historyView, detailsView].forEach(view => {
+        view.style.display = (view === viewToShow) ? 'block' : 'none';
+    });
+    // Special handling for search input visibility might be needed if it's not always visible
+    if (viewToShow === searchResultsView || viewToShow === homeView) { // Example: show search input for home and search results
+        searchInput.style.display = 'block';
+    } else {
+        // searchInput.style.display = 'none'; // Or keep it always visible in the header
+    }
+    videoPlayer.src = ''; // Stop video when changing main views (except if going to details)
+}
+
 
 // --- Event Listeners ---
+searchInput.addEventListener('input', () => {
+    // Reset search history index if user types something
+    if (searchInput.value !== '') {
+        currentSearchHistoryIndex = -1;
+    }
+});
+
 searchInput.addEventListener('keypress', async (event) => {
     if (event.key === 'Enter') {
         const query = searchInput.value.trim();
+        currentSearchHistoryIndex = -1; // Reset history index on new search
         if (query) {
             const results = await searchMedia(query);
+            addToSearchHistory(query); // Add to search history
             if (results && results.results) {
-                document.getElementById('popular-movies').style.display = 'none';
-                document.getElementById('popular-tv-shows').style.display = 'none';
-                detailsSection.style.display = 'none';
-                searchResultsSection.style.display = 'block';
-                searchResultsGrid.innerHTML = ''; // Clear previous before displaying new
-                displaySearchResults(results.results);
-                // Focus first result after search
-                const firstResult = searchResultsGrid.querySelector('.result-item');
-                if (firstResult) {
-                    updateFocus(null, firstResult, searchResultsGrid.querySelectorAll('.result-item'));
-                }
+                showView(searchResultsView);
+                displayItemsGrid(results.results, searchResultsGrid, 'search results');
             }
         } else {
-            // If search is cleared and enter is pressed, go to popular sections
-            showPopularSections();
-            const firstFocusable = document.querySelector('.carousel-item');
-            if (firstFocusable) {
-                updateFocus(null, firstFocusable, document.querySelectorAll('.carousel-item'));
+            // If search is cleared and enter is pressed, go to home
+            showView(homeView);
+            // Refocus first item in home view if necessary
+            const firstCarouselItem = homeView.querySelector('.carousel-item');
+            if (firstCarouselItem) {
+                updateFocus(null, firstCarouselItem, homeView.querySelectorAll('.carousel-item'));
             }
         }
     }
 });
 
-siteTitle.addEventListener('click', () => {
-    showPopularSections();
-    videoPlayer.src = ''; // Stop video
-    const firstFocusable = document.querySelector('.carousel-item');
-    if (firstFocusable) {
-        updateFocus(null, firstFocusable, document.querySelectorAll('.carousel-item'));
+siteTitleHeader.addEventListener('click', () => { // Changed from siteTitle
+    showView(homeView);
+    const firstCarouselItem = homeView.querySelector('.carousel-item');
+    if (firstCarouselItem) {
+        updateFocus(null, firstCarouselItem, homeView.querySelectorAll('.carousel-item'));
     }
+});
+
+navHomeBtn.addEventListener('click', () => {
+    showView(homeView);
+    const firstCarouselItem = homeView.querySelector('.carousel-item');
+    if (firstCarouselItem) {
+        updateFocus(null, firstCarouselItem, homeView.querySelectorAll('.carousel-item'));
+    }
+});
+
+navFavoritesBtn.addEventListener('click', () => {
+    showView(favoritesView);
+    displayItemsGrid(getFavorites(), favoritesGrid, 'favorites');
+});
+
+navHistoryBtn.addEventListener('click', () => {
+    showView(historyView);
+    displayItemsGrid(getHistory(), historyGrid, 'watch history');
+});
+
+navSearchBtn.addEventListener('click', () => {
+    // Option 1: Just focus the search input if it's always visible
+    searchInput.focus();
+    // Option 2: Switch to a dedicated search input view if you have one
+    // showView(searchOnlyView); // if you create a view that only has the search bar prominently
+    // Option 3: Show search results view, expecting user to type
+    showView(searchResultsView); // This will show "No search results found." initially if query is empty
+    searchInput.focus();
+
 });
 
 
 // Call init when the script loads
 init();
 
-// D-pad/Arrow key navigation
+// --- Sidebar Collapse Toggle ---
+const sidebarToggleButton = document.createElement('button'); // Let's create one dynamically for now
+sidebarToggleButton.innerHTML = '<i class="fas fa-bars"></i>';
+sidebarToggleButton.classList.add('sidebar-toggle-btn');
+// mainContent.querySelector('header').prepend(sidebarToggleButton); // Add to header in main content
+// Or, better:
+sidebar.prepend(sidebarToggleButton); // Add to top of sidebar itself
+sidebarToggleButton.style.cssText = `
+    background: #e50914; color: white; border: none; padding: 0.5rem;
+    font-size: 1.2rem; cursor: pointer; width: 100%; margin-bottom: 1rem;
+    display: none; /* Initially hidden, shown via CSS or specific logic if needed */
+`;
+// For TV UI, collapse might be less common or handled differently.
+// Let's assume a class 'collapsed' on sidebar is toggled by some means (e.g. a hidden button or specific key)
+// For now, we'll manually control it or add a dedicated key later if needed.
+// To test: sidebar.classList.toggle('collapsed');
+
+// --- D-Pad/Arrow Key Navigation ---
+let currentFocusableArea = 'sidebar'; // 'sidebar', 'main-header', 'main-content'
+let lastFocusedElementInMain = null; // Remember last focused in main for returning from sidebar
+let currentSearchHistoryIndex = -1; // Initialize for cycling through search history
+
 document.addEventListener('keydown', (event) => {
     const key = event.key;
-    let activeElements;
-    let currentSection;
+    const activeElement = document.activeElement;
 
-    // Determine active elements based on what's visible
-    if (detailsSection.style.display === 'block') {
-        activeElements = Array.from(detailsSection.querySelectorAll('button, iframe')).filter(el => el.offsetParent !== null);
-        currentSection = 'details';
-    } else if (searchResultsSection.style.display === 'block') {
-        activeElements = Array.from(searchResultsGrid.querySelectorAll('.result-item')).filter(el => el.offsetParent !== null);
-        currentSection = 'search';
-    } else {
-        // Default to carousels if nothing else is active
-        // This needs to be more sophisticated to handle multiple carousels
-        // For now, let's try to get all visible carousel items
-        const visibleCarousels = Array.from(document.querySelectorAll('.carousel-container'))
-                                     .filter(c => c.offsetParent !== null && c.style.display !== 'none');
-        activeElements = [];
-        visibleCarousels.forEach(vc => {
-            activeElements.push(...Array.from(vc.querySelectorAll('.carousel-item')));
-        });
-        currentSection = 'carousel';
-    }
-
-    if (searchInput === document.activeElement && (key === "ArrowDown" || key === "Enter")) {
-         // If search input is focused and user presses down or enter, move to first result/item
-        if (activeElements.length > 0) {
-            searchInput.blur(); // Unfocus search input
-            currentFocus = 0;
-            updateFocus(null, activeElements[currentFocus], activeElements);
-            event.preventDefault();
-            return;
-        }
-    } else if (searchInput === document.activeElement) {
-        return; // Allow normal typing in search bar
-    }
-
-
-    if (!activeElements || activeElements.length === 0) return;
-
-    const currentIndex = activeElements.findIndex(el => el.classList.contains('focused') || el === document.activeElement);
-    let nextIndex = currentIndex === -1 ? 0 : currentIndex;
-
-    // Prevent page scroll for arrow keys
+    // Prevent default scroll for arrow keys, but allow for input fields
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
-        event.preventDefault();
+        if (activeElement.tagName !== 'INPUT' && activeElement.tagName !== 'TEXTAREA') {
+            event.preventDefault();
+        }
     }
 
+    if (key === 'Escape') {
+        event.preventDefault();
+        // If in details view, go back to the previous view (home, search, fav, hist)
+        // This needs more sophisticated state tracking of which view was active before details.
+        // For now, a simple Escape goes to Home view.
+        showView(homeView);
+        const firstHomeItem = homeView.querySelector('.carousel-item') || sidebar.querySelector('li');
+        if (firstHomeItem) updateFocus(null, firstHomeItem, getFocusableElements(homeView));
+        return;
+    }
+
+    if (activeElement === searchInput && !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(key)) {
+        return; // Allow normal typing in search
+    }
+
+    let focusableElements = getFocusableElements();
+    let currentIndex = focusableElements.indexOf(activeElement);
+    if (currentIndex === -1 && focusableElements.length > 0) { // If no active element, or it's not in our list
+        // Try to find if it's a .focused item (if browser focus somehow got lost)
+        const focusedClassElement = focusableElements.find(el => el.classList.contains('focused'));
+        if (focusedClassElement) {
+            currentIndex = focusableElements.indexOf(focusedClassElement);
+        } else {
+             // Fallback: focus the first element in the current area or globally
+            currentIndex = 0; // Default to first if nothing sensible is focused
+            if (focusableElements.length > 0) updateFocus(null, focusableElements[0], focusableElements);
+        }
+    }
+
+
+    if (focusableElements.length === 0) return; // No focusable elements on the page
+
+    let nextElement = null;
+
+    // --- Navigation Logic ---
     switch (key) {
         case 'ArrowUp':
-            if (currentSection === 'details') { // In details, up could go to search or last carousel
-                // Simple: try to focus search or do nothing
-                searchInput.focus();
-            } else if (currentSection === 'search' || currentSection === 'carousel') {
-                // Naive "up" - go to search bar or try to find an element "above"
-                // This is complex for a grid/horizontal layout.
-                // A simpler approach for now: ArrowUp from a grid/carousel goes to search.
-                 searchInput.focus();
+            if (currentFocusableArea === 'sidebar') {
+                nextElement = getNextFocusable(currentIndex, -1, focusableElements);
+            } else if (currentFocusableArea === 'main-content' || currentFocusableArea === 'main-header') {
+                if (activeElement === searchInput) {
+                    // Potentially move to sidebar if search is at the top of main content
+                    // currentFocusableArea = 'sidebar';
+                    // nextElement = sidebar.querySelector('li:last-child'); // Example: last sidebar item
+                } else {
+                    // Try to move up within the current grid/list in main content
+                    nextElement = navigateGrid(activeElement, 'up', focusableElements);
+                    if (!nextElement && activeElement.closest('.results-grid, .carousel-container, .details-info')) {
+                        // If at the top of a grid/carousel, move to search input
+                        nextElement = searchInput;
+                    } else if (!nextElement) {
+                        // If truly at the top of main content (e.g. search input was the candidate)
+                        // consider moving to sidebar (complex, needs clear entry points)
+                        // For now, ArrowUp from search can go to last sidebar item or first.
+                        // currentFocusableArea = 'sidebar';
+                        // nextElement = sidebar.querySelector('li:last-child');
+                    }
+                }
             }
             break;
-        case 'ArrowDown':
-            if (currentSection === 'details') { // In details, down could go to player or related content
-                 // cycle through buttons if on them
-                if(activeElements[currentIndex] && activeElements[currentIndex].tagName === 'BUTTON'){
-                    nextIndex = (currentIndex + 1) % activeElements.filter(el => el.tagName === 'BUTTON').length;
-                    const buttons = activeElements.filter(el => el.tagName === 'BUTTON');
-                    updateFocus(activeElements[currentIndex], buttons[nextIndex], buttons);
-                } else {
-                     // if not on a button, focus the first button
-                    const firstButton = activeElements.find(el => el.tagName ==='BUTTON');
-                    if(firstButton) updateFocus(null, firstButton, activeElements);
-                }
 
-            } else if (currentSection === 'search' || currentSection === 'carousel') {
-                // Move down into the grid/carousel items if coming from search or another section
-                // This logic will be handled by ensuring currentFocus is set correctly when entering section
-                // If already in grid, find item below (complex for mixed height items)
-                // Simple: if on search input, first item. If on item, try next row (hard) or do nothing.
-                // For now, ArrowDown from search focuses first item.
-                if (document.activeElement === searchInput && activeElements.length > 0) {
-                    updateFocus(null, activeElements[0], activeElements);
+        case 'ArrowDown':
+            if (currentFocusableArea === 'sidebar') {
+                nextElement = getNextFocusable(currentIndex, 1, focusableElements);
+            } else if (currentFocusableArea === 'main-header' && activeElement === searchInput) {
+                // Move from search input to the first item in the current main view
+                const mainViewElements = getFocusableElementsInCurrentView();
+                if (mainViewElements.length > 0) nextElement = mainViewElements[0];
+                currentFocusableArea = 'main-content';
+            } else if (currentFocusableArea === 'main-header' && activeElement === searchInput && searchInput.value === '') {
+                // Cycle through search history if input is empty and ArrowDown is pressed
+                const searchHistory = getSearchHistory();
+                if (searchHistory.length > 0) {
+                    currentSearchHistoryIndex = (currentSearchHistoryIndex + 1) % searchHistory.length;
+                    searchInput.value = searchHistory[currentSearchHistoryIndex];
+                    nextElement = searchInput; // Keep focus on search input
                 } else {
-                    // Placeholder for more complex grid navigation (e.g. moving to item in next row)
-                    // For horizontal carousels, down might mean exiting the carousel to a section below.
+                    // If no history, behave as if moving to main content
+                    const mainViewElements = getFocusableElementsInCurrentView();
+                    if (mainViewElements.length > 0) nextElement = mainViewElements[0];
+                    currentFocusableArea = 'main-content';
                 }
+            } else if (currentFocusableArea === 'main-content') {
+                nextElement = navigateGrid(activeElement, 'down', focusableElements);
             }
             break;
+
         case 'ArrowLeft':
-            if (currentSection === 'details' && activeElements[currentIndex] && activeElements[currentIndex].tagName === 'BUTTON') {
-                const buttons = activeElements.filter(el => el.tagName === 'BUTTON');
-                const currentButtonIndex = buttons.indexOf(activeElements[currentIndex]);
-                if (currentButtonIndex > 0) {
-                    updateFocus(activeElements[currentIndex], buttons[currentButtonIndex - 1], buttons);
+            if (currentFocusableArea === 'main-content' || currentFocusableArea === 'main-header') {
+                 // If in a carousel/grid, and at the start of a row, or if it's a button list in details
+                const isFirstInRow = isElementFirstInRow(activeElement, focusableElements);
+                if (isFirstInRow || activeElement.closest('.details-info') || activeElement === searchInput) {
+                    // Move to sidebar
+                    currentFocusableArea = 'sidebar';
+                    // Try to focus a sensible item in sidebar, e.g. currently selected or first visible
+                    const currentSidebarItem = sidebar.querySelector('.focused') || sidebar.querySelector('li[tabindex="0"]');
+                    nextElement = currentSidebarItem;
+                } else {
+                    nextElement = navigateGrid(activeElement, 'left', focusableElements);
                 }
-            } else if (currentSection === 'search' || currentSection === 'carousel') {
-                nextIndex = Math.max(0, currentIndex - 1);
-                 if (currentIndex !== nextIndex || currentIndex === -1) { // also handle if no item was focused
-                    updateFocus(activeElements[currentIndex], activeElements[nextIndex], activeElements);
+            } else if (currentFocusableArea === 'sidebar'){
+                // Potentially collapse sidebar or do nothing
+                if(!sidebar.classList.contains('collapsed')) {
+                    // sidebar.classList.add('collapsed');
+                    // mainContent.style.paddingLeft = '80px'; // Adjust if not done by CSS
                 }
             }
             break;
+
         case 'ArrowRight':
-             if (currentSection === 'details' && activeElements[currentIndex] && activeElements[currentIndex].tagName === 'BUTTON') {
-                const buttons = activeElements.filter(el => el.tagName === 'BUTTON');
-                const currentButtonIndex = buttons.indexOf(activeElements[currentIndex]);
-                if (currentButtonIndex < buttons.length - 1) {
-                    updateFocus(activeElements[currentIndex], buttons[currentButtonIndex + 1], buttons);
+            if (currentFocusableArea === 'sidebar') {
+                // Move to main content area
+                currentFocusableArea = 'main-header'; // Start with header (search) or main content
+                if (lastFocusedElementInMain && document.body.contains(lastFocusedElementInMain)) {
+                    nextElement = lastFocusedElementInMain;
+                } else {
+                    nextElement = searchInput.offsetParent !== null ? searchInput : getFocusableElementsInCurrentView()[0];
                 }
-            } else if (currentSection === 'search' || currentSection === 'carousel') {
-                nextIndex = Math.min(activeElements.length - 1, currentIndex + 1);
-                 if (currentIndex !== nextIndex) {
-                    updateFocus(activeElements[currentIndex], activeElements[nextIndex], activeElements);
+                if (nextElement) currentFocusableArea = nextElement === searchInput ? 'main-header' : 'main-content';
+
+            } else if (currentFocusableArea === 'main-content' || currentFocusableArea === 'main-header') {
+                nextElement = navigateGrid(activeElement, 'right', focusableElements);
+                 if (!nextElement && isElementLastInRow(activeElement, focusableElements)) {
+                    // At the end of a row, do nothing or wrap (if implemented in navigateGrid)
                 }
             }
             break;
+
         case 'Enter':
-             if (document.activeElement && document.activeElement !== searchInput) {
-                document.activeElement.click();
-            } else if (activeElements[currentFocus] && activeElements[currentFocus] !== searchInput) {
-                 activeElements[currentFocus].click();
-            }
-            break;
-        case 'Escape': // Go back to popular movies/TV shows view
-            showPopularSections();
-            videoPlayer.src = ''; // Stop video
-            if (popularMoviesSection.querySelector('.carousel-item')) {
-                 updateFocus(null, popularMoviesSection.querySelector('.carousel-item'), document.querySelectorAll('.carousel-item, .result-item'));
+            if (activeElement && typeof activeElement.click === 'function') {
+                activeElement.click();
             }
             break;
     }
+
+    if (nextElement) {
+        updateFocus(activeElement, nextElement, focusableElements);
+        if (currentFocusableArea === 'main-content' || currentFocusableArea === 'main-header') {
+            lastFocusedElementInMain = nextElement;
+        }
+    }
 });
+
+
+function getFocusableElements(parentElement = document) {
+    // Determine current visible view to narrow down focusable elements
+    let viewNode = null;
+    if (homeView.style.display === 'block') viewNode = homeView;
+    else if (searchResultsView.style.display === 'block') viewNode = searchResultsView;
+    else if (favoritesView.style.display === 'block') viewNode = favoritesView;
+    else if (historyView.style.display === 'block') viewNode = historyView;
+    else if (detailsView.style.display === 'block') viewNode = detailsView;
+
+    let elements = [];
+    // Sidebar items are always potentially focusable if sidebar is the current area
+    const sidebarItems = Array.from(sidebar.querySelectorAll('li[tabindex="0"]'));
+
+    if (currentFocusableArea === 'sidebar') {
+        elements = sidebarItems;
+    } else if (currentFocusableArea === 'main-header') {
+        elements = [searchInput].filter(el => el.offsetParent !== null); // Only visible search input
+    } else { // main-content
+        if (viewNode) {
+            elements.push(...Array.from(viewNode.querySelectorAll(
+                '.carousel-item, .result-item, button, iframe, a[href]'
+            )).filter(el => el.offsetParent !== null && !el.disabled));
+        }
+        // If searchInput is part of main-content focus area (e.g. not in 'main-header' mode)
+        // if (searchInput.offsetParent !== null) elements.unshift(searchInput);
+    }
+
+    // Fallback if no specific area elements found, get all possible ones
+    if (elements.length === 0 && parentElement === document) {
+         elements = Array.from(document.querySelectorAll(
+            '.sidebar li[tabindex="0"], #search-input, .carousel-item, .result-item, .details-view button, .details-view iframe, a[href]'
+        )).filter(el => el.offsetParent !== null && !el.disabled);
+    } else if (elements.length === 0 && parentElement !== document) {
+        // If called with a specific parentElement (like a viewNode)
+        elements = Array.from(parentElement.querySelectorAll(
+            '.carousel-item, .result-item, button, iframe, a[href]'
+        )).filter(el => el.offsetParent !== null && !el.disabled);
+    }
+
+    return elements;
+}
+
+function getFocusableElementsInCurrentView() {
+    let viewNode = null;
+    if (homeView.style.display === 'block') viewNode = homeView;
+    else if (searchResultsView.style.display === 'block') viewNode = searchResultsView;
+    else if (favoritesView.style.display === 'block') viewNode = favoritesView;
+    else if (historyView.style.display === 'block') viewNode = historyView;
+    else if (detailsView.style.display === 'block') viewNode = detailsView;
+
+    if (viewNode) {
+        return Array.from(viewNode.querySelectorAll(
+            '.carousel-item, .result-item, button, iframe, a[href]'
+        )).filter(el => el.offsetParent !== null && !el.disabled);
+    }
+    return [];
+}
+
+
+function getNextFocusable(currentIndex, direction, elements) {
+    if (elements.length === 0) return null;
+    const nextIndex = currentIndex + direction;
+    if (nextIndex >= 0 && nextIndex < elements.length) {
+        return elements[nextIndex];
+    }
+    // Optional: Implement wrapping
+    // if (nextIndex < 0) return elements[elements.length - 1]; // Wrap to last
+    // if (nextIndex >= elements.length) return elements[0]; // Wrap to first
+    return null; // No next element in that direction / no wrapping
+}
+
+function calculateItemsPerRow(containerElement, itemElement) {
+    if (!containerElement || !itemElement) return 1; // Default to 1 if elements are not valid
+    const containerWidth = containerElement.offsetWidth;
+    const itemWidth = itemElement.offsetWidth;
+    const itemStyle = window.getComputedStyle(itemElement);
+    const itemMarginLeft = parseFloat(itemStyle.marginLeft) || 0;
+    const itemMarginRight = parseFloat(itemStyle.marginRight) || 0;
+    const itemGap = parseFloat(window.getComputedStyle(containerElement).gap) || (parseFloat(itemStyle.marginRight)); // Use container gap or item margin
+
+    const totalItemWidth = itemWidth + itemMarginLeft + itemMarginRight; // More accurately, itemWidth + gap used by flex/grid
+
+    if (totalItemWidth <=0) return 1;
+
+    // If using gap, total width for an item is itemWidth. The gap is between items.
+    // So, (containerWidth + gap) / (itemWidth + gap)
+    const effectiveItemWidthWithGap = itemWidth + itemGap;
+    let itemsPerRow = Math.floor((containerWidth + itemGap) / effectiveItemWidthWithGap);
+
+    // Fallback for very narrow containers or if calculation is off
+    if (itemsPerRow <= 0) itemsPerRow = 1;
+    // console.log(`Cont: ${containerWidth}, ItemW: ${itemWidth}, ItemGap: ${itemGap}, EffItemWGap: ${effectiveItemWidthWithGap}, ItemsPerRow: ${itemsPerRow}`);
+    return itemsPerRow;
+}
+
+
+function navigateGrid(currentElement, direction, allFocusableInContext) {
+    const parentGrid = currentElement.closest('.results-grid, .carousel-container');
+    const parentView = currentElement.closest('section[id$="-view"], section[id^="popular-"]');
+    let itemsInGrid;
+
+    if (parentGrid) { // If inside a specific grid or carousel
+        itemsInGrid = Array.from(parentGrid.querySelectorAll('.result-item, .carousel-item'))
+                           .filter(el => el.offsetParent !== null);
+    } else if (parentView && parentView.id === 'details-view') { // Special handling for details view buttons
+         itemsInGrid = Array.from(parentView.querySelectorAll('button'))
+                            .filter(el => el.offsetParent !== null);
+    } else { // Fallback to all focusable in context if not in a clear grid
+        itemsInGrid = allFocusableInContext.filter(el => el.offsetParent !==null);
+    }
+
+    if (!itemsInGrid || itemsInGrid.length === 0) return null;
+
+    let currentIndexInGrid = itemsInGrid.indexOf(currentElement);
+    if (currentIndexInGrid === -1) return null; // Current element not in the identified grid items
+
+    switch (direction) {
+        case 'left':
+            return currentIndexInGrid > 0 ? itemsInGrid[currentIndexInGrid - 1] : null;
+        case 'right':
+            return currentIndexInGrid < itemsInGrid.length - 1 ? itemsInGrid[currentIndexInGrid + 1] : null;
+        case 'up':
+        case 'down':
+            if (!parentGrid || parentGrid.classList.contains('carousel-container')) {
+                // For carousels or non-grid contexts, up/down might mean exiting or is unhandled here
+                return null; // Let outer logic handle (e.g. move to search or sidebar)
+            }
+            const itemsPerRow = calculateItemsPerRow(parentGrid, itemsInGrid[0]);
+            if (itemsPerRow <= 0) return null; // Should not happen if items exist
+
+            const targetIndex = direction === 'up'
+                ? currentIndexInGrid - itemsPerRow
+                : currentIndexInGrid + itemsPerRow;
+
+            if (targetIndex >= 0 && targetIndex < itemsInGrid.length) {
+                return itemsInGrid[targetIndex];
+            } else if (direction === 'up' && targetIndex < 0) {
+                // Reached top of grid, could return first item of current column or null to exit up
+                // return itemsInGrid[currentIndexInGrid % itemsPerRow]; // First item in current column
+                return null; // Signal to exit grid upwards
+            } else if (direction === 'down' && targetIndex >= itemsInGrid.length) {
+                // Reached bottom of grid
+                // return itemsInGrid[itemsInGrid.length - 1 - ( (itemsInGrid.length-1-currentIndexInGrid) % itemsPerRow )]; // Last item in col
+                return null; // Signal to exit grid downwards
+            }
+            return null;
+    }
+    return null;
+}
+
+function isElementFirstInRow(element, contextElements) {
+    const parentGrid = element.closest('.results-grid');
+    if (!parentGrid) return false; // Not in a grid we can calculate rows for
+
+    const itemsInGrid = Array.from(parentGrid.querySelectorAll('.result-item'))
+                           .filter(el => el.offsetParent !== null);
+    if (itemsInGrid.length === 0) return false;
+
+    const itemsPerRow = calculateItemsPerRow(parentGrid, itemsInGrid[0]);
+    if (itemsPerRow <= 0) return false;
+
+    const elementIndex = itemsInGrid.indexOf(element);
+    return elementIndex % itemsPerRow === 0;
+}
+
+function isElementLastInRow(element, contextElements) {
+    const parentGrid = element.closest('.results-grid');
+    if (!parentGrid) return false;
+
+    const itemsInGrid = Array.from(parentGrid.querySelectorAll('.result-item'))
+                           .filter(el => el.offsetParent !== null);
+    if (itemsInGrid.length === 0) return false;
+
+    const itemsPerRow = calculateItemsPerRow(parentGrid, itemsInGrid[0]);
+    if (itemsPerRow <= 0) return false;
+
+    const elementIndex = itemsInGrid.indexOf(element);
+    return (elementIndex + 1) % itemsPerRow === 0 || elementIndex === itemsInGrid.length - 1;
+}
+
 
 function updateFocus(oldFocusElement, newFocusElement, elementList) {
     if (oldFocusElement) {
@@ -418,34 +830,33 @@ function updateFocus(oldFocusElement, newFocusElement, elementList) {
     }
     if (newFocusElement) {
         newFocusElement.classList.add('focused');
-        newFocusElement.focus(); // Use browser's focus
+        newFocusElement.focus();
         newFocusElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
 
-        // Update global currentFocus based on the new element's position in a broader list if necessary
-        // This part can be tricky if elementList is not the global list of all focusable items.
-        // For simplicity, we assume elementList here is the relevant list for the current context.
-        const globalFocusable = document.querySelectorAll('.carousel-item, .result-item, .player-options button');
-        currentFocus = Array.from(globalFocusable).indexOf(newFocusElement);
-
-    } else if (elementList && elementList.length > 0) {
-        // If newFocusElement is null but there's a list, focus the first one (e.g. after search)
+        // Update global currentFocus if still needed, or rely on document.activeElement
+        // For simplicity now, document.activeElement is the source of truth.
+    } else if (elementList && elementList.length > 0 && !document.querySelector('.focused')) {
+        // If newFocusElement is null but there's a list AND nothing has .focused class, focus the first one
+        // This can happen if focus is lost entirely.
         elementList[0].classList.add('focused');
         elementList[0].focus();
         elementList[0].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
-        currentFocus = Array.from(document.querySelectorAll('.carousel-item, .result-item, .player-options button')).indexOf(elementList[0]);
     }
 }
 
-function showPopularSections() {
-    detailsSection.style.display = 'none';
-    searchResultsSection.style.display = 'none';
-    document.getElementById('popular-movies').style.display = 'block';
-    document.getElementById('popular-tv-shows').style.display = 'block';
+
+function showPopularSections() { // This function is likely deprecated by showView
+    // detailsSection.style.display = 'none';
+    // searchResultsSection.style.display = 'none';
+    // document.getElementById('popular-movies').style.display = 'block';
+    // document.getElementById('popular-tv-shows').style.display = 'block';
     searchInput.value = ''; // Clear search
 }
 
-// Modify init to focus the first carousel item on load
+// Modify init to show home view and focus the first carousel item on load
 async function init() {
+    showView(homeView); // Ensure home view is visible first
+
     const popularMovies = await getPopularMovies();
     if (popularMovies && popularMovies.results) {
         displayCarousel(popularMovies.results, popularMoviesSection, 'movie');
@@ -455,9 +866,18 @@ async function init() {
     if (popularTvShows && popularTvShows.results) {
         displayCarousel(popularTvShows.results, popularTvShowsSection, 'tv');
     }
-    // Set initial focus on the first item of the first carousel if available
-    const firstFocusable = document.querySelector('.carousel-item');
-    if (firstFocusable) {
-        updateFocus(null, firstFocusable, document.querySelectorAll('.carousel-item'));
+
+    // Set initial focus on the first item of the first carousel if available,
+    // or the first sidebar item if no carousel items.
+    let firstFocusableElement = homeView.querySelector('.carousel-item');
+    if (!firstFocusableElement) {
+        firstFocusableElement = sidebar.querySelector('li[tabindex="0"]');
+    }
+
+    if (firstFocusableElement) {
+        // Determine the list of all potentially focusable items in the initial view for context
+        const initialFocusableItems = Array.from(sidebar.querySelectorAll('li[tabindex="0"]'))
+            .concat(Array.from(homeView.querySelectorAll('.carousel-item')));
+        updateFocus(null, firstFocusableElement, initialFocusableItems);
     }
 }

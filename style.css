@@ -1,202 +1,446 @@
 body {
-    font-family: 'Arial', sans-serif;
+    font-family: 'Roboto', 'Arial', sans-serif; /* Using Roboto for a more modern feel */
     margin: 0;
-    background-color: #141414;
+    background-color: #101010; /* Slightly darker background */
     color: #fff;
     line-height: 1.6;
+    overflow: hidden; /* Prevent body scroll with new layout */
 }
 
-header {
-    background-color: #101010;
-    padding: 1rem;
+.app-container {
+    display: flex;
+    height: 100vh;
+}
+
+.sidebar {
+    width: 260px; /* Default width */
+    background-color: #080808; /* Darker sidebar */
+    padding: 1.5rem 0;
+    display: flex;
+    flex-direction: column;
+    transition: width 0.2s ease-out;
+    overflow-y: auto; /* For many sidebar items */
+    overflow-x: hidden; /* Prevent horizontal scroll */
+    border-right: 1px solid #1a1a1a;
+    position: fixed; /* Keep sidebar fixed */
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 200; /* Ensure sidebar is on top */
+}
+
+.sidebar.collapsed {
+    width: 80px;
+}
+
+.sidebar.collapsed .nav-text {
+    display: none;
+    opacity: 0;
+}
+.sidebar.collapsed .sidebar-logo h1 {
+    font-size: 1.2rem; /* Smaller logo */
+    padding: 0.5rem 0;
+}
+.sidebar.collapsed ul li {
+    justify-content: center;
+    padding: 1rem 0;
+}
+.sidebar.collapsed ul li i {
+    margin-right: 0;
+    font-size: 1.6rem; /* Larger icons when collapsed */
+}
+
+.sidebar-logo {
     text-align: center;
-    border-bottom: 1px solid #303030;
+    margin-bottom: 1.5rem; /* Reduced margin */
+    padding: 0 1rem; /* Padding for logo text */
 }
 
-header h1 {
+.sidebar-logo h1 {
     margin: 0;
-    font-size: 2rem;
-    color: #e50914; /* Netflix-like red */
+    font-size: 1.8rem; /* Adjusted size */
+    color: #e50914;
+    cursor: pointer;
+    font-weight: bold;
+    letter-spacing: 1px;
 }
 
-#search {
-    width: 50%;
-    max-width: 400px;
-    padding: 0.75rem;
-    margin-top: 1rem;
-    border: 1px solid #303030;
-    border-radius: 4px;
-    background-color: #333;
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex-grow: 1;
+}
+
+.sidebar ul li {
+    padding: 0.9rem 1.75rem; /* Adjusted padding */
+    color: #b0b0b0; /* Lighter grey for text */
+    cursor: pointer;
+    transition: background-color 0.15s ease-out, color 0.15s ease-out, padding-left 0.2s ease-out;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    font-size: 1.05rem; /* Slightly larger font */
+    border-left: 4px solid transparent; /* For active/focus indication */
+}
+
+.sidebar ul li:hover {
+    background-color: #1c1c1c;
+    color: #fff;
+    border-left-color: #555;
+}
+.sidebar ul li.focused {
+    background-color: #e50914;
+    color: #ffffff;
+    font-weight: bold;
+    border-left-color: #ff6670; /* Brighter accent for focused */
+    outline: none;
+    box-shadow: inset 3px 0px 15px -2px rgba(0,0,0,0.5);
+}
+.sidebar ul li.focused i {
+    transform: scale(1.1); /* Subtle icon scale on focus */
+}
+
+
+.sidebar ul li i {
+    width: 22px; /* Fixed width for icon */
+    text-align: center;
+    font-size: 1.2rem; /* Icon size */
+    transition: transform 0.15s ease-out;
+}
+.sidebar .nav-text {
+    transition: opacity 0.1s ease-out;
+}
+
+
+.main-content {
+    flex: 1;
+    overflow-y: auto;
+    padding-left: 260px; /* Match sidebar width */
+    transition: padding-left 0.2s ease-out;
+    background-color: #141414; /* Main content background */
+}
+.sidebar.collapsed + .main-content {
+    padding-left: 80px; /* Adjust when sidebar is collapsed */
+}
+
+
+/* Header within main-content */
+.main-content > header {
+    background-color: #181818; /* Darker header for main content */
+    padding: 0.8rem 1.5rem;
+    display: flex; /* For layout if more items are added */
+    align-items: center;
+    border-bottom: 1px solid #282828;
+    /* position: sticky; top: 0; z-index: 100; */ /* If sticky header is desired */
+}
+
+#search-input { /* Renamed from #search */
+    width: 100%; /* Take available width */
+    max-width: 500px; /* Max width for search */
+    padding: 0.8rem 1rem;
+    border: 1px solid #333;
+    border-radius: 20px; /* Pill shape */
+    background-color: #222;
     color: #fff;
     font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-#search:focus {
+#search-input:focus {
     outline: none;
     border-color: #e50914;
-    box-shadow: 0 0 5px rgba(229, 9, 20, 0.5);
+    box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.3); /* Glow effect */
+    background-color: #282828;
 }
 
-main {
-    padding: 1.5rem;
+
+main { /* Main content area within .main-content div */
+    padding: 1.5rem 2rem; /* More horizontal padding */
 }
 
-h2 {
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
+h2 { /* Section titles */
+    font-size: 1.7rem; /* Larger section titles */
+    font-weight: 500; /* Medium weight */
+    margin-top: 1.5rem;
+    margin-bottom: 1.25rem;
     border-bottom: 2px solid #e50914;
     padding-bottom: 0.5rem;
     display: inline-block;
+    color: #f5f5f5; /* Brighter title color */
 }
+section:first-child h2 {
+    margin-top: 0.5rem;
+}
+
 
 .carousel-container, .results-grid {
     display: flex;
-    overflow-x: auto; /* Allows horizontal scrolling for carousels */
-    padding-bottom: 1rem; /* Space for scrollbar if needed */
-    gap: 1rem; /* Spacing between items */
+    gap: 1.25rem;
+    padding-bottom: 1.5rem; /* Space for shadows/focus outlines */
+}
+
+.carousel-container {
+    overflow-x: auto; /* Horizontal scroll for carousels */
+    padding-left: 5px; /* Ensure box shadow isn't clipped */
+    padding-right: 5px;
 }
 
 .results-grid {
-    flex-wrap: wrap; /* Allow items to wrap in search results */
-    justify-content: flex-start;
+    flex-wrap: wrap;
 }
+
 
 .carousel-item, .result-item {
-    background-color: #202020;
-    border-radius: 5px;
-    overflow: hidden;
+    background-color: #1f1f1f; /* Slightly lighter item background */
+    border-radius: 8px; /* More rounded corners */
+    overflow: visible; /* Allow box shadow to be fully visible */
     cursor: pointer;
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    min-width: 180px; /* Minimum width for carousel items */
-    max-width: 200px; /* Maximum width for carousel items */
-    text-align: center;
+    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+    min-width: 190px;
+    max-width: 210px;
+    text-align: left; /* Text aligned to left */
+    border: 2px solid transparent; /* For smooth focus transition */
+    position: relative; /* For potential pseudo-elements or badges */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.carousel-item:hover, .result-item:hover {
+    transform: translateY(-5px) scale(1.03); /* Lift effect */
+    box-shadow: 0 8px 15px rgba(0,0,0,0.4);
 }
 
-.carousel-item:hover, .result-item:hover,
-.carousel-item.focused, .result-item.focused { /* Style for focused items */
-    transform: scale(1.05);
-    box-shadow: 0 0 15px rgba(229, 9, 20, 0.7);
-    outline: 2px solid #e50914;
+.carousel-item.focused, .result-item.focused {
+    transform: scale(1.1); /* Prominent scale for TV focus */
+    box-shadow: 0 10px 25px rgba(0,0,0,0.6), 0 0 0 4px #e50914; /* Shadow and red outline */
+    outline: none; /* Custom outline handled by box-shadow */
+    z-index: 10; /* Bring focused item to front */
+    border-color: #e50914;
 }
 
 .carousel-item img, .result-item img {
     width: 100%;
-    height: auto;
     display: block;
-    aspect-ratio: 2/3; /* Maintain poster aspect ratio */
+    aspect-ratio: 2/3;
     object-fit: cover;
+    border-radius: 6px 6px 0 0; /* Rounded top corners for image */
+    /* border-bottom: 3px solid #e50914; */ /* Removed, focus does more */
 }
 
 .carousel-item p, .result-item p {
-    padding: 0.5rem;
-    font-size: 0.9rem;
+    padding: 0.6rem 0.8rem; /* Adjusted padding */
+    font-size: 0.95rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: #e0e0e0;
+    background-color: #1f1f1f; /* Ensure text background matches card */
+    border-radius: 0 0 6px 6px; /* Rounded bottom for text area */
 }
 
-#details {
-    margin-top: 2rem;
+
+/* Details View Styling */
+#details-view { /* Renamed from #details */
+    padding: 1rem 0; /* Less vertical padding for the section wrapper */
 }
 
 .details-container {
     display: flex;
-    gap: 2rem;
-    background-color: #181818;
-    padding: 1.5rem;
-    border-radius: 8px;
+    flex-direction: column;
+    gap: 1.5rem;
+    background-color: rgba(0,0,0,0.2); /* More transparent background */
+    padding: 2rem;
+    border-radius: 12px; /* Softer radius */
+    /* box-shadow: 0 8px 30px rgba(0,0,0,0.5); */ /* Removed for cleaner look, rely on content */
+}
+
+@media (min-width: 900px) { /* Wider breakpoint for side-by-side */
+    .details-container {
+        flex-direction: row;
+        gap: 2.5rem;
+    }
 }
 
 #details-poster {
-    max-width: 300px;
+    width: 100%;
+    max-width: 320px; /* Slightly smaller max for balance */
+    min-width: 250px; /* Ensure it's not too small */
     height: auto;
-    border-radius: 5px;
+    border-radius: 10px;
     object-fit: cover;
+    align-self: center;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.4);
 }
+@media (min-width: 900px) {
+    #details-poster {
+        align-self: flex-start;
+    }
+}
+
 
 .details-info {
     flex: 1;
 }
 
 #details-title {
-    font-size: 2.2rem;
+    font-size: 2.6rem;
     margin-top: 0;
-    color: #e50914;
+    margin-bottom: 0.5rem;
+    color: #f5f5f5; /* Brighter white for title */
+    font-weight: 700; /* Bolder */
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
 }
+#details-title::before { /* Small accent line */
+    content: '';
+    display: block;
+    width: 60px;
+    height: 4px;
+    background-color: #e50914;
+    margin-bottom: 0.5rem;
+}
+
 
 #details-overview {
-    font-size: 1rem;
-    margin-bottom: 1rem;
+    font-size: 1.05rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.65;
+    color: #bdbdbd; /* Softer grey for overview */
+}
+.details-info p strong { /* Rating label */
+    color: #e0e0e0;
+    font-weight: 500;
+}
+#details-rating {
+    color: #e50914; /* Red rating value */
+    font-weight: bold;
 }
 
-.player-options {
-    margin-top: 1rem;
-    margin-bottom: 1rem;
-}
 
-.player-options button {
-    padding: 0.75rem 1.5rem;
-    margin-right: 0.5rem;
+/* Buttons in Details View */
+.details-action-button, .player-choice-btn {
+    padding: 0.9rem 1.6rem; /* Increased padding */
+    margin-right: 1rem;
+    margin-bottom: 1rem;
     border: none;
-    border-radius: 4px;
+    border-radius: 25px; /* Pill shaped buttons */
     cursor: pointer;
     font-size: 1rem;
-    transition: background-color 0.2s;
+    font-weight: 600; /* Slightly bolder text */
+    transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+.details-action-button i, .player-choice-btn i {
+    font-size: 1.05rem;
 }
 
-#player-regular {
+.details-action-button { /* For "Add to Favorites" */
+    background-color: rgba(255,255,255,0.1); /* Subtle white */
+    color: #f5f5f5;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+.details-action-button.is-favorite,
+.details-action-button.is-favorite:hover,
+.details-action-button.is-favorite.focused {
+    background-color: #e50914;
+    color: white;
+    border-color: #e50914;
+    box-shadow: 0 0 15px rgba(229,9,20,0.5);
+}
+.details-action-button:hover {
+    background-color: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+.details-action-button.focused {
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.3); /* Focus outline */
+    transform: translateY(-1px);
+}
+
+
+.player-options {
+    margin-top: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.player-choice-btn#player-regular {
     background-color: #e50914;
     color: white;
 }
-
-#player-regular:hover, #player-regular.focused {
-    background-color: #f40612;
-    outline: 2px solid white;
+.player-choice-btn#player-regular:hover, .player-choice-btn#player-regular.focused {
+    background-color: #c40812; /* Darker red */
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(229,9,20,0.3);
+}
+.player-choice-btn#player-regular.focused {
+     box-shadow: 0 0 0 3px rgba(255, 100, 100, 0.5);
 }
 
-#player-vip {
-    background-color: #555;
-    color: white;
+.player-choice-btn#player-vip {
+    background-color: rgba(255,255,255,0.8); /* Light button for VIP */
+    color: #101010; /* Dark text */
+    border: 1px solid rgba(0,0,0,0.1);
+}
+.player-choice-btn#player-vip:hover, .player-choice-btn#player-vip.focused {
+    background-color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.player-choice-btn#player-vip.focused {
+    box-shadow: 0 0 0 3px rgba(200,200,200,0.5);
 }
 
-#player-vip:hover, #player-vip.focused {
-    background-color: #666;
-    outline: 2px solid white;
-}
 
 #video-player {
     width: 100%;
-    max-width: 800px; /* Limit player width */
-    aspect-ratio: 16/9; /* Maintain 16:9 aspect ratio */
+    max-width: 1000px; /* Even larger player */
+    aspect-ratio: 16/9;
     border: none;
-    border-radius: 5px;
-    margin-top: 1rem;
+    border-radius: 10px; /* Consistent rounding */
+    margin-top: 1.5rem;
+    background-color: #000;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
 }
 
 footer {
     text-align: center;
     padding: 1.5rem;
-    margin-top: 2rem;
-    background-color: #101010;
-    border-top: 1px solid #303030;
+    margin-top: 2rem; /* Ensure it's pushed down */
+    background-color: #080808; /* Match sidebar dark */
+    border-top: 1px solid #1a1a1a;
     font-size: 0.9rem;
+    color: #666; /* Darker grey for footer text */
 }
 
-/* Hide scrollbar for carousel containers, but still allow scrolling */
-.carousel-container::-webkit-scrollbar {
-    display: none; /* For Chrome, Safari, and Opera */
+/* Scrollbar Styling (Subtle) */
+.main-content::-webkit-scrollbar, .sidebar::-webkit-scrollbar {
+    width: 10px; /* Slightly wider scrollbar */
 }
-.carousel-container {
-    -ms-overflow-style: none;  /* For Internet Explorer and Edge */
-    scrollbar-width: none;  /* For Firefox */
+.main-content::-webkit-scrollbar-track, .sidebar::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.1); /* More transparent track */
+}
+.main-content::-webkit-scrollbar-thumb, .sidebar::-webkit-scrollbar-thumb {
+    background: #333; /* Darker thumb */
+    border-radius: 5px;
+    border: 2px solid transparent; /* Create a border effect */
+    background-clip: content-box;
+}
+.main-content::-webkit-scrollbar-thumb:hover, .sidebar::-webkit-scrollbar-thumb:hover {
+    background: #e50914;
 }
 
-/* Basic focus outline for accessibility - can be improved */
-*:focus {
-    outline: 2px solid #007bff; /* A generic blue, override for specific elements */
-}
-/* Remove default outline for elements that have custom focus styles */
-.carousel-item:focus, .result-item:focus,
-.player-options button:focus, #search:focus {
-    outline: none;
+.carousel-container::-webkit-scrollbar { display: none; }
+.carousel-container { -ms-overflow-style: none; scrollbar-width: none; }
+
+
+/* General Focus & Removing default for custom styled ones */
+*:focus { outline: none; } /* Remove ALL default outlines, rely on .focused or specific :focus */
+
+.empty-message {
+    color: #777; /* Lighter empty message */
+    font-size: 1.25rem;
+    text-align: center;
+    width: 100%;
+    padding: 3rem 1rem; /* More padding */
+    font-style: italic;
 }

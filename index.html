@@ -5,53 +5,78 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CineStream</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"> <!-- For icons -->
 </head>
 <body>
-    <header>
-        <h1>CineStream</h1>
-        <input type="text" id="search" placeholder="Search for movies and TV shows...">
-    </header>
+    <div class="app-container">
+        <nav class="sidebar">
+            <div class="sidebar-logo">
+                <h1>CineStream</h1>
+            </div>
+            <ul>
+                <li id="nav-search-btn" tabindex="0"><i class="fas fa-search"></i> <span class="nav-text">Search</span></li>
+                <li id="nav-home-btn" tabindex="0"><i class="fas fa-home"></i> <span class="nav-text">Home</span></li>
+                <li id="nav-favorites-btn" tabindex="0"><i class="fas fa-heart"></i> <span class="nav-text">Favorites</span></li>
+                <li id="nav-history-btn" tabindex="0"><i class="fas fa-history"></i> <span class="nav-text">History</span></li>
+            </ul>
+        </nav>
 
-    <main>
-        <section id="popular-movies">
-            <h2>Popular Movies</h2>
-            <div class="carousel-container">
-                </div>
-        </section>
+        <div class="main-content">
+            <header>
+                <input type="text" id="search-input" placeholder="Search for movies and TV shows...">
+                <!-- User profile icon or other header elements can go here -->
+            </header>
 
-        <section id="popular-tv-shows">
-            <h2>Popular TV Shows</h2>
-            <div class="carousel-container">
-                </div>
-        </section>
+            <main>
+                <section id="home-view">
+                    <section id="popular-movies">
+                        <h2>Popular Movies</h2>
+                        <div class="carousel-container"></div>
+                    </section>
+                    <section id="popular-tv-shows">
+                        <h2>Popular TV Shows</h2>
+                        <div class="carousel-container"></div>
+                    </section>
+                </section> <!-- End Home View -->
 
-        <section id="search-results" style="display: none;">
-            <h2>Search Results</h2>
-            <div class="results-grid">
-                </div>
-        </section>
+                <section id="search-results-view" style="display: none;">
+                    <h2>Search Results</h2>
+                    <div class="results-grid" id="search-results-grid"></div>
+                </section>
 
-        <section id="details" style="display: none;">
-            <div class="details-container">
-                <img id="details-poster" src="" alt="Poster">
-                <div class="details-info">
+                <section id="favorites-view" style="display: none;">
+                    <h2>My Favorites</h2>
+                    <div class="results-grid" id="favorites-grid"></div>
+                </section>
+
+                <section id="history-view" style="display: none;">
+                    <h2>Watch History</h2>
+                    <div class="results-grid" id="history-grid"></div>
+                </section>
+
+                <section id="details-view" style="display: none;">
+                    <div class="details-container">
+                        <img id="details-poster" src="" alt="Poster">
+                        <div class="details-info">
                     <h2 id="details-title"></h2>
                     <p id="details-overview"></p>
                     <p><strong>Rating:</strong> <span id="details-rating"></span></p>
+                    <button id="add-to-favorites-btn" class="details-action-button"><i class="fas fa-heart"></i> Add to Favorites</button>
+                    <!-- Placeholder for other actions like share, etc. -->
                     <div class="player-options">
-                        <button id="player-regular">Regular Player</button>
-                        <button id="player-vip">VIP Player</button>
+                        <button id="player-regular" class="player-choice-btn">Regular Player</button>
+                        <button id="player-vip" class="player-choice-btn">VIP Player</button>
                     </div>
-                    <iframe id="video-player" width="560" height="315" src="" frameborder="0" allowfullscreen></iframe>
+                    <iframe id="video-player" width="560" height="315" src="" frameborder="0" allowfullscreen sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
                 </div>
             </div>
         </section>
     </main>
-
-    <footer>
-        <p>&copy; 2023 CineStream. Powered by TMDB.</p>
-    </footer>
-
+        <footer>
+            <p>&copy; 2023 CineStream. Powered by TMDB.</p>
+        </footer>
+    </div> <!-- End main-content -->
+</div> <!-- End app-container -->
     <script src="script.js"></script>
 </body>
 </html>
